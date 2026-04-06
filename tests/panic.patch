@@ -1,0 +1,20 @@
+diff --git a/crates/crates_io_database_dump/src/dump-db.toml b/crates/crates_io_database_dump/src/dump-db.toml
+index 7d5fbb93f4c..cfb4eb024d6 100644
+--- a/crates/crates_io_database_dump/src/dump-db.toml
++++ b/crates/crates_io_database_dump/src/dump-db.toml
+@@ -165,11 +165,11 @@ created_at = "public"
+ total_downloads = "public"
+ 
+ [oauth_github.columns]
+-user_id = "public"
+-account_id = "public"
++user_id = "private"
++account_id = "private"
+ encrypted_token = "private"
+-login = "public"
+
++login = "private"
++avatar = "private"
+ [oauth_github.column_defaults]
+ encrypted_token = "''"
+ 

@@ -15,7 +15,9 @@ use crate::format::patch::{PatchFile, parse_patch};
 pub struct LemmingApp {
     /// Current patch
     pub patch_string: String,
+
     /// Current patch filename
+    #[serde(skip)]
     pub filename: PathBuf,
 
     /// Parsed patch

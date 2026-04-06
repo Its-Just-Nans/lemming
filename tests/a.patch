@@ -1,0 +1,46 @@
+From 96e1e91906803d95b9dd1db0660885a7b89bf619 Mon Sep 17 00:00:00 2001
+From: n4n5 <its.just.n4n5@gmail.com>
+Date: Sun, 1 Feb 2026 11:40:44 -0700
+Subject: [PATCH] temporay fix time for
+ https://github.com/rusticata/x509-parser/pull/231
+
+---
+ Cargo.lock | 2 ++
+ Cargo.toml | 4 ++++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/Cargo.lock b/Cargo.lock
+index 0af63eb..43334d6 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -3411,6 +3411,7 @@ checksum = "9da98b7d9b7dad93488a84b8248efc35352b0b2657397d4167e7ad67e5d535e5"
+ dependencies = [
+  "deranged",
+  "itoa",
++ "js-sys",
+  "num-conv",
+  "powerfmt",
+  "serde_core",
+@@ -4495,6 +4496,7 @@ dependencies = [
+  "file-format",
+  "roxmltree 0.21.1",
+  "serde",
++ "time",
+  "x509-parser",
+ ]
+ 
+diff --git a/Cargo.toml b/Cargo.toml
+index 58523cb..8f173fd 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -25,6 +25,10 @@ roxmltree = { version = "0.21.1", features = ["positions"] }
+ serde = { version = "1", features = ["derive"] }
+ x509-parser = "0.18.0"
+ 
++# temp fix https://github.com/rusticata/x509-parser/pull/231
++time = { version = "0.3.46", features = ["wasm-bindgen"] }
++
++
+ [profile.release]
+ opt-level = 2 # fast and small wasm
+ 
