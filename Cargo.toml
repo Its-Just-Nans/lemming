@@ -1,0 +1,19 @@
+[package]
+name = "lemming"
+description = "A patch editor"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+homepage = "https://lemming.n4n5.dev/"
+repository = "https://github.com/Its-Just-Nans/lemming"
+documentation = "https://docs.rs/lemming"
+
+[dependencies]
+gitpatch = "0.7.1"
+bladvak = "1.2.14"
+nom = "8.0.0"
+patch = "0.7.0"
+serde = { version = "1.0.228", features = ["derive"] }
+
+[patch.crates-io]
+gitpatch = { git = "https://github.com/Its-Just-Nans/gitpatch.git", branch = "remove-assert" }

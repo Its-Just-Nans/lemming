@@ -1,0 +1,9 @@
+#![warn(clippy::all, rust_2018_idioms)]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+
+use lemming::LemmingApp;
+use bladvak::app::Bladvak;
+
+fn main() -> bladvak::MainResult {
+    Bladvak::<LemmingApp>::bladvak_main()
+}
