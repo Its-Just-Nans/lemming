@@ -62,7 +62,7 @@ impl BladvakApp<'_> for LemmingApp {
         ui.label(format!("{}", self.filename.display()));
     }
 
-    fn menu_file(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
+    fn menu_file(&mut self, _ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
         // self.app_menu_file(ui, error_manager);
     }
 
