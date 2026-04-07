@@ -60,6 +60,7 @@ impl LemmingApp {
         egui::ScrollArea::both()
             .id_salt("parsed_column")
             .show(ui, |ui| {
+                let mut errors = vec![];
                 CollapsingHeader::new("Metadata")
                     .id_salt(format!("metadata"))
                     .show(ui, |ui| {
@@ -86,6 +87,7 @@ impl LemmingApp {
                                 ui.label(format!("{}", one_stat.changed_lines));
                             });
                         }
+                        ui.label(format!("files changes: {}", patch_file.files_changes));
                         ui.label(format!("insertions: {}", patch_file.insertions));
                         ui.label(format!("deletions: {}", patch_file.deletions));
                     });
@@ -96,7 +98,7 @@ impl LemmingApp {
                     );
                     match Patch::from_single(&diff) {
                         Ok(one_diff) => {
-                            CollapsingHeader::new("Diff")
+                            CollapsingHeader::new(format!("Diff {}", idx_diff))
                                 .id_salt(format!("diff_{idx_diff}"))
                                 .show(ui, |ui| {
                                     ui.label(one_diff.old.path);
@@ -110,20 +112,27 @@ impl LemmingApp {
                                             ui.label("New range:");
                                             ui.monospace(one_hunk.old_range.to_string());
                                         });
+                                        let mut count_modified = 0;
                                         for one_line in one_hunk.lines {
                                             let rich_text =
                                                 |t: &str| RichText::new(t).monospace().size(10.0);
                                             match one_line {
                                                 Line::Add(l) => {
                                                     ui.colored_label(Color32::GREEN, rich_text(l));
+                                                    count_modified = count_modified + 1;
                                                 }
                                                 Line::Context(l) => {
                                                     ui.colored_label(Color32::WHITE, rich_text(l));
                                                 }
                                                 Line::Remove(l) => {
                                                     ui.colored_label(Color32::RED, rich_text(l));
+                                                    count_modified = count_modified + 1;
                                                 }
                                             }
+                                        }
+                                        if count_modified == 0 {
+                                            errors
+                                                .push(format!("No modified line for {}", idx_diff));
                                         }
                                     }
                                 });
@@ -133,6 +142,9 @@ impl LemmingApp {
                             ui.label(e.to_string());
                         }
                     }
+                }
+                for one_error in errors {
+                    ui.label(&one_error);
                 }
             });
     }

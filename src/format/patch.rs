@@ -3,6 +3,8 @@
 use nom::Err;
 use nom::Parser;
 use nom::error::Error;
+use nom::sequence::preceded;
+use nom::sequence::terminated;
 use nom::{
     IResult,
     branch::alt,
@@ -36,6 +38,8 @@ pub(crate) struct PatchFile {
     pub(crate) subject: String,
     /// File stats
     pub(crate) file_stats: Vec<FileStat>,
+    /// Number of files changes
+    pub(crate) files_changes: usize,
     /// Number of insertions
     pub(crate) insertions: usize,
     /// Number of deletions
@@ -152,12 +156,17 @@ fn parse_diff(input: &str) -> IResult<&str, Diff> {
 }
 
 /// Parse summary
-fn parse_summary(input: &str) -> IResult<&str, (usize, usize)> {
+fn parse_summary(input: &str) -> IResult<&str, (usize, usize, usize)> {
     let (input, _) = space1.parse(input)?;
     let (input, files) = digit1.parse(input)?;
-    let (input, _) = tag(" files changed, ").parse(input)?;
-    let (input, insertions) = digit1.parse(input)?;
-    let (input, _) = tag(" insertions").parse(input)?;
+    let (input, _) = tag(" files changed").parse(input)?;
+    // Optionally parse insertions
+    let (input, insertions) =
+        opt(preceded(tag(", "), terminated(digit1, tag(" insertions(+)")))).parse(input)?;
+
+    // Optionally parse deletions
+    let (input, deletions) =
+        opt(preceded(tag(", "), terminated(digit1, tag(" deletions(-)")))).parse(input)?;
     let (input, _) = take_until("\n").parse(input)?;
     let (input, _) = newline.parse(input)?;
 
@@ -168,6 +177,11 @@ fn parse_summary(input: &str) -> IResult<&str, (usize, usize)> {
                 .parse()
                 .map_err(|_e| Err::Failure(Error::new(input, nom::error::ErrorKind::Digit)))?,
             insertions
+                .unwrap_or("0")
+                .parse()
+                .map_err(|_e| Err::Failure(Error::new(input, nom::error::ErrorKind::Digit)))?,
+            deletions
+                .unwrap_or("0")
                 .parse()
                 .map_err(|_e| Err::Failure(Error::new(input, nom::error::ErrorKind::Digit)))?,
         ),
@@ -175,11 +189,11 @@ fn parse_summary(input: &str) -> IResult<&str, (usize, usize)> {
 }
 
 /// Parse stats
-fn parse_stats(input: &str) -> IResult<&str, (Vec<FileStat>, usize, usize)> {
-    let (input, (file_stats, (files_changed, insertions))) =
+fn parse_stats(input: &str) -> IResult<&str, (Vec<FileStat>, usize, usize, usize)> {
+    let (input, (file_stats, (files_changes, insertions, deletions))) =
         many_till(parse_file_stats, parse_summary).parse(input)?;
 
-    Ok((input, (file_stats, files_changed, insertions)))
+    Ok((input, (file_stats, files_changes, insertions, deletions)))
 }
 
 /// Parse patch
@@ -191,7 +205,7 @@ pub fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
 
     let (input, _) = tag("---\n")(input)?;
 
-    let (mut input, (file_stats, insertions, deletions)) = parse_stats(input)?;
+    let (mut input, (file_stats, files_changes, insertions, deletions)) = parse_stats(input)?;
 
     let mut diffs = Vec::new();
 
@@ -209,6 +223,7 @@ pub fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
             date,
             subject,
             file_stats,
+            files_changes,
             insertions,
             deletions,
             diffs,
