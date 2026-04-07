@@ -1,5 +1,5 @@
 var cacheName = "lemming-pwa";
-var filesToCache = ["./", "./index.html", "./lemming.js", "./lemming.wasm"];
+var filesToCache = ["./", "./index.html", "./lemming.js", "./lemming_bg.wasm"];
 
 async function networkFirst(request) {
     try {
