@@ -17,12 +17,15 @@ pub struct LemmingApp {
     pub(crate) patch_string: String,
 
     /// Current patch filename
-    #[serde(skip)]
     pub(crate) filename: PathBuf,
 
     /// Parsed patch
     #[serde(skip)]
     pub(crate) parsed: Option<PatchFile>,
+
+    /// Parsing error
+    #[serde(skip)]
+    pub(crate) parsing_error: Option<String>,
 }
 
 impl LemmingApp {
@@ -32,6 +35,15 @@ impl LemmingApp {
         let (_, patch_file) = parse_file(&self.patch_string)
             .map_err(|e| format!("Error during patch parsing {e}"))?;
         self.parsed = Some(patch_file);
+        Ok(())
+    }
+
+    pub(crate) fn handle_saved_state(&mut self) -> Result<(), AppError> {
+        if !self.patch_string.is_empty() {
+            if let Err(e) = self.update_patch() {
+                self.parsing_error = Some(e.to_string());
+            }
+        }
         Ok(())
     }
 }
@@ -57,7 +69,9 @@ impl BladvakApp<'_> for LemmingApp {
     fn handle_file(&mut self, file: File) -> Result<(), AppError> {
         self.patch_string = String::from_utf8_lossy(&file.data).to_string();
         self.filename = file.path;
-        self.update_patch()?;
+        if let Err(e) = self.update_patch() {
+            self.parsing_error = Some(e.to_string());
+        }
         Ok(())
     }
 
@@ -92,7 +106,7 @@ impl BladvakApp<'_> for LemmingApp {
     }
 
     fn try_new_with_args(
-        saved_state: Self,
+        mut saved_state: Self,
         _cc: &CreationContext<'_>,
         args: &[String],
     ) -> Result<Self, AppError> {
@@ -106,6 +120,7 @@ impl BladvakApp<'_> for LemmingApp {
             })?;
             Ok(app)
         } else {
+            saved_state.handle_saved_state()?;
             Ok(saved_state)
         }
     }

@@ -1,17 +1,14 @@
 //! patch format parser
 
-use nom::Err;
-use nom::Parser;
-use nom::error::Error;
-use nom::sequence::preceded;
-use nom::sequence::terminated;
 use nom::{
-    IResult,
+    Err, IResult, Parser,
     branch::alt,
-    bytes::complete::{tag, take_until, take_while1},
-    character::complete::{digit1, newline, space1},
+    bytes::complete::{tag, take_until, take_while, take_while1},
+    character::complete::{digit1, newline, space0, space1},
     combinator::opt,
+    error::Error,
     multi::many_till,
+    sequence::{preceded, terminated},
 };
 
 /// File statistics
@@ -110,9 +107,11 @@ fn parse_file_stats(input: &str) -> IResult<&str, FileStat> {
     let (input, _) = space1.parse(input)?;
     let (input, path) = take_until(" | ").parse(input)?;
     let (input, _) = tag(" | ").parse(input)?;
+    let (input, _) = space0.parse(input)?;
     let (input, count) = digit1.parse(input)?;
-    let (input, _) = space1.parse(input)?;
-    let (input, _) = take_while1(|c| c == '+' || c == '-').parse(input)?;
+    // Sometimes the number can be 0 - so no ++ or --
+    let (input, _) = space0.parse(input)?;
+    let (input, _) = take_while(|c| c == '+' || c == '-').parse(input)?;
     let (input, _) = newline.parse(input)?;
 
     Ok((

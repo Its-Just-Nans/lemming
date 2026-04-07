@@ -7,23 +7,23 @@ use bladvak::{
 };
 use gitpatch::{Line, Patch};
 
-use crate::{app::LemmingApp, patch::PatchFile};
+use crate::app::LemmingApp;
 
 impl LemmingApp {
     /// App central panel
     pub(crate) fn app_central_panel(
         &mut self,
         ui: &mut egui::Ui,
-        error_manager: &mut ErrorManager,
+        _error_manager: &mut ErrorManager,
     ) {
-        let Some(patch_file) = &self.parsed else {
-            ui.label("No patch file upload");
-            return;
-        };
-
         let mut changed = false;
+        let mut patch_errors = if let Some(error) = &self.parsing_error {
+            vec![error.to_string()]
+        } else {
+            vec![]
+        };
         ui.columns(2, |columns| {
-            Self::parsed_column(&mut columns[0], patch_file);
+            patch_errors.extend(self.parsed_column(&mut columns[0]));
             egui::ScrollArea::vertical()
                 .id_salt("raw_column")
                 .show(&mut columns[1], |ui| {
@@ -50,18 +50,37 @@ impl LemmingApp {
                     }
                 });
         });
-        if changed && let Err(e) = self.update_patch() {
-            error_manager.add_error(e);
+        if changed {
+            if let Err(e) = self.update_patch() {
+                self.parsing_error = Some(e.to_string());
+            } else {
+                self.parsing_error = None;
+            }
+        }
+        if !patch_errors.is_empty() {
+            let mut open = true;
+            egui::Window::new("Patch errors")
+                .open(&mut open)
+                .vscroll(true)
+                .show(ui.ctx(), |ui| {
+                    for one_error in patch_errors {
+                        ui.colored_label(Color32::RED, &one_error);
+                    }
+                });
         }
     }
 
     /// show parsed patch
     #[allow(clippy::too_many_lines)] // maybe reformat later
-    fn parsed_column(ui: &mut egui::Ui, patch_file: &PatchFile) {
+    fn parsed_column(&mut self, ui: &mut egui::Ui) -> Vec<String> {
+        let Some(patch_file) = &self.parsed else {
+            ui.label("No patch file upload");
+            return vec![];
+        };
+        let mut errors = vec![];
         egui::ScrollArea::both()
             .id_salt("parsed_column")
             .show(ui, |ui| {
-                let mut errors = vec![];
                 if let Some(metadata) = &patch_file.metadata {
                 CollapsingHeader::new("Metadata")
                     .id_salt("metadata".to_string())
@@ -170,17 +189,7 @@ impl LemmingApp {
                         }
                     }
                 }
-                if !errors.is_empty() {
-                    let mut open = true;
-                    egui::Window::new("Patch errors")
-                        .open(&mut open)
-                        .vscroll(true)
-                        .show(ui.ctx(), |ui| {
-                            for one_error in errors {
-                                ui.colored_label(Color32::RED, &one_error);
-                            }
-                        });
-                }
             });
+        errors
     }
 }
