@@ -62,7 +62,7 @@ impl LemmingApp {
             .show(ui, |ui| {
                 let mut errors = vec![];
                 CollapsingHeader::new("Metadata")
-                    .id_salt(format!("metadata"))
+                    .id_salt("metadata".to_string())
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
                             ui.label("From");
@@ -98,7 +98,7 @@ impl LemmingApp {
                     );
                     match Patch::from_single(&diff) {
                         Ok(one_diff) => {
-                            CollapsingHeader::new(format!("Diff {}", idx_diff))
+                            CollapsingHeader::new(format!("Diff {idx_diff}"))
                                 .id_salt(format!("diff_{idx_diff}"))
                                 .show(ui, |ui| {
                                     ui.label(one_diff.old.path);
@@ -119,20 +119,20 @@ impl LemmingApp {
                                             match one_line {
                                                 Line::Add(l) => {
                                                     ui.colored_label(Color32::GREEN, rich_text(l));
-                                                    count_modified = count_modified + 1;
+                                                    count_modified += 1;
                                                 }
                                                 Line::Context(l) => {
                                                     ui.colored_label(Color32::WHITE, rich_text(l));
                                                 }
                                                 Line::Remove(l) => {
                                                     ui.colored_label(Color32::RED, rich_text(l));
-                                                    count_modified = count_modified + 1;
+                                                    count_modified += 1;
                                                 }
                                             }
                                         }
                                         if count_modified == 0 {
                                             errors
-                                                .push(format!("No modified line for {}", idx_diff));
+                                                .push(format!("No modified line for {idx_diff}"));
                                         }
                                     }
                                 });

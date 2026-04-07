@@ -161,12 +161,18 @@ fn parse_summary(input: &str) -> IResult<&str, (usize, usize, usize)> {
     let (input, files) = digit1.parse(input)?;
     let (input, _) = tag(" files changed").parse(input)?;
     // Optionally parse insertions
-    let (input, insertions) =
-        opt(preceded(tag(", "), terminated(digit1, tag(" insertions(+)")))).parse(input)?;
+    let (input, insertions) = opt(preceded(
+        tag(", "),
+        terminated(digit1, tag(" insertions(+)")),
+    ))
+    .parse(input)?;
 
     // Optionally parse deletions
-    let (input, deletions) =
-        opt(preceded(tag(", "), terminated(digit1, tag(" deletions(-)")))).parse(input)?;
+    let (input, deletions) = opt(preceded(
+        tag(", "),
+        terminated(digit1, tag(" deletions(-)")),
+    ))
+    .parse(input)?;
     let (input, _) = take_until("\n").parse(input)?;
     let (input, _) = newline.parse(input)?;
 
