@@ -103,7 +103,7 @@ impl LemmingApp {
                                 .show(ui, |ui| {
                                     ui.label(one_diff.old.path);
                                     ui.label(one_diff.new.path);
-                                    for one_hunk in one_diff.hunks {
+                                    for (idx_hunk, one_hunk) in one_diff.hunks.into_iter().enumerate() {
                                         ui.separator();
                                         ui.horizontal(|ui| {
                                             ui.label("Old range:");
@@ -131,7 +131,7 @@ impl LemmingApp {
                                             }
                                         }
                                         if count_modified == 0 {
-                                            errors.push(format!("No modified line for {idx_diff}"));
+                                            errors.push(format!("No modified line for diff number {idx_diff} hunk number {idx_hunk}"));
                                         }
                                     }
                                 });
@@ -142,8 +142,16 @@ impl LemmingApp {
                         }
                     }
                 }
-                for one_error in errors {
-                    ui.label(&one_error);
+                if !errors.is_empty() {
+                    let mut open = true;
+                    egui::Window::new("Patch errors")
+                        .open(&mut open)
+                        .vscroll(true)
+                        .show(ui.ctx(), |ui| {
+                            for one_error in errors {
+                                ui.label(&one_error);
+                            }
+                        });
                 }
             });
     }
