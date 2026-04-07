@@ -60,6 +60,35 @@ impl LemmingApp {
         egui::ScrollArea::both()
             .id_salt("parsed_column")
             .show(ui, |ui| {
+                CollapsingHeader::new("Metadata")
+                    .id_salt(format!("metadata"))
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("From");
+                            ui.label(&patch_file.commit_hash);
+                            ui.label("Mon Sep 17 00:00:00 2001");
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("From: ");
+                            ui.label(&patch_file.author);
+                            ui.label(&patch_file.email);
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Date: ");
+                            ui.label(&patch_file.date);
+                        });
+                        ui.label(&patch_file.subject);
+                        ui.label("---");
+                        for one_stat in &patch_file.file_stats {
+                            ui.horizontal(|ui| {
+                                ui.label(&one_stat.path);
+                                ui.label("|");
+                                ui.label(format!("{}", one_stat.changed_lines));
+                            });
+                        }
+                        ui.label(format!("insertions: {}", patch_file.insertions));
+                        ui.label(format!("deletions: {}", patch_file.deletions));
+                    });
                 for (idx_diff, one_diff) in patch_file.diffs.iter().enumerate() {
                     let diff = format!(
                         "diff --git {} {}\n{}\n",
@@ -67,11 +96,11 @@ impl LemmingApp {
                     );
                     match Patch::from_single(&diff) {
                         Ok(one_diff) => {
-                            ui.label(one_diff.old.path);
-                            ui.label(one_diff.new.path);
                             CollapsingHeader::new("Diff")
                                 .id_salt(format!("diff_{idx_diff}"))
                                 .show(ui, |ui| {
+                                    ui.label(one_diff.old.path);
+                                    ui.label(one_diff.new.path);
                                     for one_hunk in one_diff.hunks {
                                         ui.separator();
                                         ui.horizontal(|ui| {

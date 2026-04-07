@@ -1,8 +1,8 @@
 //! patch format parser
 
+use nom::Err;
 use nom::Parser;
 use nom::error::Error;
-use nom::Err;
 use nom::{
     IResult,
     branch::alt,
@@ -90,8 +90,7 @@ fn parse_date(input: &str) -> IResult<&str, String> {
 /// Parse subject
 fn parse_subject(input: &str) -> IResult<&str, String> {
     let (input, _) = tag("Subject: ")(input)?;
-    let (input, subject) = take_until("\n")(input)?;
-    let (input, _) = newline(input)?;
+    let (input, subject) = take_until("---")(input)?;
     Ok((input, subject.to_string()))
 }
 
@@ -109,7 +108,9 @@ fn parse_file_stats(input: &str) -> IResult<&str, FileStat> {
         input,
         FileStat {
             path: path.to_string(),
-            changed_lines: count.parse().map_err(|_e| Err::Failure(Error::new(input, nom::error::ErrorKind::Digit)))?,
+            changed_lines: count
+                .parse()
+                .map_err(|_e| Err::Failure(Error::new(input, nom::error::ErrorKind::Digit)))?,
         },
     ))
 }
@@ -188,7 +189,6 @@ pub fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
     let (input, date) = parse_date(input)?;
     let (input, subject) = parse_subject(input)?;
 
-    let (input, _) = take_until("---\n")(input)?;
     let (input, _) = tag("---\n")(input)?;
 
     let (mut input, (file_stats, insertions, deletions)) = parse_stats(input)?;
