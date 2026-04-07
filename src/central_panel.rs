@@ -56,6 +56,7 @@ impl LemmingApp {
     }
 
     /// show parsed patch
+    #[allow(clippy::too_many_lines)] // maybe reformat later
     fn parsed_column(ui: &mut egui::Ui, patch_file: &PatchFile) {
         egui::ScrollArea::both()
             .id_salt("parsed_column")
@@ -107,31 +108,56 @@ impl LemmingApp {
                                         ui.separator();
                                         ui.horizontal(|ui| {
                                             ui.label("Old range:");
-                                            ui.monospace(one_hunk.new_range.to_string());
+                                            ui.monospace(one_hunk.old_range.to_string());
                                             ui.label(" => ");
                                             ui.label("New range:");
-                                            ui.monospace(one_hunk.old_range.to_string());
+                                            ui.monospace(one_hunk.new_range.to_string());
                                         });
                                         let mut count_modified = 0;
+                                        let mut check_new_range_count = one_hunk.old_range.count;
+                                        let mut check_old_range_count = 0;
+                                        if one_hunk.lines.len() >= 3 {
+                                            let first_three = &one_hunk.lines[..3];
+                                            let last_three = &one_hunk.lines[one_hunk.lines.len() - 3..];
+
+                                            let first_ok = first_three.iter().all(|l| matches!(l, Line::Context(_)));
+                                            let last_ok = last_three.iter().all(|l| matches!(l, Line::Context(_)));
+
+                                            if !first_ok {
+                                                errors.push(format!("Diff n{idx_diff} hunk n{idx_hunk}: Missing the three first context lines"));
+                                            }
+                                            if !last_ok {
+                                                errors.push(format!("Diff n{idx_diff} hunk n{idx_hunk}: Missing the three last context lines"));
+                                            }
+                                        }
+                                            let rich_text = |t: &str| RichText::new(t).monospace().size(10.0);
                                         for one_line in one_hunk.lines {
-                                            let rich_text =
-                                                |t: &str| RichText::new(t).monospace().size(10.0);
                                             match one_line {
                                                 Line::Add(l) => {
                                                     ui.colored_label(Color32::GREEN, rich_text(l));
                                                     count_modified += 1;
+                                                    check_new_range_count += 1;
                                                 }
                                                 Line::Context(l) => {
                                                     ui.colored_label(Color32::WHITE, rich_text(l));
+                                                    check_old_range_count += 1;
                                                 }
                                                 Line::Remove(l) => {
                                                     ui.colored_label(Color32::RED, rich_text(l));
                                                     count_modified += 1;
+                                                    check_new_range_count -= 1;
+                                                    check_old_range_count += 1;
                                                 }
                                             }
                                         }
                                         if count_modified == 0 {
-                                            errors.push(format!("No modified line for diff number {idx_diff} hunk number {idx_hunk}"));
+                                            errors.push(format!("Diff n{idx_diff} hunk n{idx_hunk}: No modified line"));
+                                        }
+                                        if check_new_range_count != one_hunk.new_range.count {
+                                            errors.push(format!("Diff n{idx_diff} hunk n{idx_hunk}: Invalid new range"));
+                                        }
+                                        if check_old_range_count != one_hunk.old_range.count {
+                                            errors.push(format!("Diff n{idx_diff} hunk n{idx_hunk}: Invalid old range"));
                                         }
                                     }
                                 });
@@ -149,7 +175,7 @@ impl LemmingApp {
                         .vscroll(true)
                         .show(ui.ctx(), |ui| {
                             for one_error in errors {
-                                ui.label(&one_error);
+                                ui.colored_label(Color32::RED, &one_error);
                             }
                         });
                 }
