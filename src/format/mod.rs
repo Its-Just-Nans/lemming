@@ -1,2 +1,3 @@
-// pub(crate) mod diff;
+//! Patch format
+
 pub(crate) mod patch;

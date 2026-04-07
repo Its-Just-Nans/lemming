@@ -1,4 +1,8 @@
 //! patch format parser
+
+use nom::Parser;
+use nom::error::Error;
+use nom::Err;
 use nom::{
     IResult,
     branch::alt,
@@ -8,38 +12,55 @@ use nom::{
     multi::many_till,
 };
 
-use nom::Parser;
-
+/// File statistics
 #[derive(Debug)]
-pub struct FileStat {
-    pub path: String,
-    pub changed_lines: usize,
+pub(crate) struct FileStat {
+    /// path of file
+    pub(crate) path: String,
+    /// changed lines
+    pub(crate) changed_lines: usize,
 }
 
+/// Patch file
 #[derive(Debug)]
-pub struct PatchFile {
-    pub commit_hash: String,
-    pub author: String,
-    pub email: String,
-    pub date: String,
-    pub subject: String,
-    pub file_stats: Vec<FileStat>,
-    pub insertions: usize,
-    pub deletions: usize,
-    pub diffs: Vec<Diff>,
+pub(crate) struct PatchFile {
+    /// Commit hash
+    pub(crate) commit_hash: String,
+    /// Author
+    pub(crate) author: String,
+    /// Email
+    pub(crate) email: String,
+    /// Date
+    pub(crate) date: String,
+    /// Subject
+    pub(crate) subject: String,
+    /// File stats
+    pub(crate) file_stats: Vec<FileStat>,
+    /// Number of insertions
+    pub(crate) insertions: usize,
+    /// Number of deletions
+    pub(crate) deletions: usize,
+    /// Diffs
+    pub(crate) diffs: Vec<Diff>,
 }
 
+/// Diff
 #[derive(Debug)]
-pub struct Diff {
-    pub old_path: String,
-    pub new_path: String,
-    pub content: String,
+pub(crate) struct Diff {
+    /// Old path
+    pub(crate) old_path: String,
+    /// New path
+    pub(crate) new_path: String,
+    /// Content
+    pub(crate) content: String,
 }
 
+/// Check if hex
 fn is_hex(c: char) -> bool {
     c.is_ascii_hexdigit()
 }
 
+/// Parse commit
 fn parse_commit_hash(input: &str) -> IResult<&str, String> {
     let (input, _) = tag("From ")(input)?;
     let (input, hash) = take_while1(is_hex)(input)?;
@@ -48,6 +69,7 @@ fn parse_commit_hash(input: &str) -> IResult<&str, String> {
     Ok((input, hash.to_string()))
 }
 
+/// Parse author
 fn parse_author(input: &str) -> IResult<&str, (String, String)> {
     let (input, _) = tag("From: ")(input)?;
     let (input, name) = take_until(" <")(input)?;
@@ -57,6 +79,7 @@ fn parse_author(input: &str) -> IResult<&str, (String, String)> {
     Ok((input, (name.to_string(), email.to_string())))
 }
 
+/// Parse date
 fn parse_date(input: &str) -> IResult<&str, String> {
     let (input, _) = tag("Date: ")(input)?;
     let (input, date) = take_until("\n")(input)?;
@@ -64,6 +87,7 @@ fn parse_date(input: &str) -> IResult<&str, String> {
     Ok((input, date.to_string()))
 }
 
+/// Parse subject
 fn parse_subject(input: &str) -> IResult<&str, String> {
     let (input, _) = tag("Subject: ")(input)?;
     let (input, subject) = take_until("\n")(input)?;
@@ -71,7 +95,8 @@ fn parse_subject(input: &str) -> IResult<&str, String> {
     Ok((input, subject.to_string()))
 }
 
-fn parse_file_stat(input: &str) -> IResult<&str, FileStat> {
+/// Parse file stats
+fn parse_file_stats(input: &str) -> IResult<&str, FileStat> {
     let (input, _) = space1.parse(input)?;
     let (input, path) = take_until(" | ").parse(input)?;
     let (input, _) = tag(" | ").parse(input)?;
@@ -84,11 +109,12 @@ fn parse_file_stat(input: &str) -> IResult<&str, FileStat> {
         input,
         FileStat {
             path: path.to_string(),
-            changed_lines: count.parse().unwrap(),
+            changed_lines: count.parse().map_err(|_e| Err::Failure(Error::new(input, nom::error::ErrorKind::Digit)))?,
         },
     ))
 }
 
+/// Parse diff
 fn parse_diff(input: &str) -> IResult<&str, Diff> {
     let (input, _) = newline.parse(input)?;
     // diff --git a/foo b/foo
@@ -124,6 +150,7 @@ fn parse_diff(input: &str) -> IResult<&str, Diff> {
     ))
 }
 
+/// Parse summary
 fn parse_summary(input: &str) -> IResult<&str, (usize, usize)> {
     let (input, _) = space1.parse(input)?;
     let (input, files) = digit1.parse(input)?;
@@ -133,16 +160,28 @@ fn parse_summary(input: &str) -> IResult<&str, (usize, usize)> {
     let (input, _) = take_until("\n").parse(input)?;
     let (input, _) = newline.parse(input)?;
 
-    Ok((input, (files.parse().unwrap(), insertions.parse().unwrap())))
+    Ok((
+        input,
+        (
+            files
+                .parse()
+                .map_err(|_e| Err::Failure(Error::new(input, nom::error::ErrorKind::Digit)))?,
+            insertions
+                .parse()
+                .map_err(|_e| Err::Failure(Error::new(input, nom::error::ErrorKind::Digit)))?,
+        ),
+    ))
 }
 
+/// Parse stats
 fn parse_stats(input: &str) -> IResult<&str, (Vec<FileStat>, usize, usize)> {
     let (input, (file_stats, (files_changed, insertions))) =
-        many_till(parse_file_stat, parse_summary).parse(input)?;
+        many_till(parse_file_stats, parse_summary).parse(input)?;
 
     Ok((input, (file_stats, files_changed, insertions)))
 }
 
+/// Parse patch
 pub fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
     let (input, commit_hash) = parse_commit_hash(input)?;
     let (input, (author, email)) = parse_author(input)?;
@@ -168,8 +207,8 @@ pub fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
             author,
             email,
             date,
-            file_stats,
             subject,
+            file_stats,
             insertions,
             deletions,
             diffs,

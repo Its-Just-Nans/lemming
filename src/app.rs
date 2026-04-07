@@ -14,15 +14,15 @@ use crate::format::patch::{PatchFile, parse_patch};
 #[serde(default)]
 pub struct LemmingApp {
     /// Current patch
-    pub patch_string: String,
+    pub(crate) patch_string: String,
 
     /// Current patch filename
     #[serde(skip)]
-    pub filename: PathBuf,
+    pub(crate) filename: PathBuf,
 
     /// Parsed patch
     #[serde(skip)]
-    pub parsed: Option<PatchFile>,
+    pub(crate) parsed: Option<PatchFile>,
 }
 
 impl LemmingApp {
@@ -37,7 +37,8 @@ impl LemmingApp {
 
 impl BladvakApp<'_> for LemmingApp {
     fn side_panel(&mut self, ui: &mut egui::Ui, func_ui: impl FnOnce(&mut egui::Ui, &mut Self)) {
-        egui::Frame::central_panel(&ui.ctx().global_style()).show(ui, |panel_ui| func_ui(panel_ui, self));
+        egui::Frame::central_panel(&ui.ctx().global_style())
+            .show(ui, |panel_ui| func_ui(panel_ui, self));
     }
 
     fn panel_list(&self) -> Vec<Box<dyn bladvak::app::BladvakPanel<App = Self>>> {
@@ -109,7 +110,6 @@ impl BladvakApp<'_> for LemmingApp {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
 
@@ -117,7 +117,7 @@ mod tests {
     fn test_panic_file() {
         use gitpatch::Patch;
 
-        let sample = include_str!("../panic.patch");
+        let sample = include_str!("../tests/panic.patch");
         let patch = Patch::from_single(sample);
         assert!(patch.is_err());
     }

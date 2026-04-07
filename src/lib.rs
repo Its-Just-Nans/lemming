@@ -12,7 +12,7 @@
     clippy::expect_used,
     clippy::pedantic
 )]
-#![warn(clippy::multiple_crate_versions)]
+#![allow(clippy::multiple_crate_versions)]
 
 pub(crate) mod app;
 pub(crate) mod central_panel;
