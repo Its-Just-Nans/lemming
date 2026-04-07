@@ -18,7 +18,7 @@ impl LemmingApp {
     ) {
         let mut changed = false;
         let mut patch_errors = if let Some(error) = &self.parsing_error {
-            vec![error.to_string()]
+            vec![error.clone()]
         } else {
             vec![]
         };

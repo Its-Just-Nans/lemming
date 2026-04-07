@@ -38,13 +38,13 @@ impl LemmingApp {
         Ok(())
     }
 
-    pub(crate) fn handle_saved_state(&mut self) -> Result<(), AppError> {
-        if !self.patch_string.is_empty() {
-            if let Err(e) = self.update_patch() {
-                self.parsing_error = Some(e.to_string());
-            }
+    /// Handle the saved state
+    pub(crate) fn handle_saved_state(&mut self) {
+        if !self.patch_string.is_empty()
+            && let Err(e) = self.update_patch()
+        {
+            self.parsing_error = Some(e.to_string());
         }
-        Ok(())
     }
 }
 
@@ -120,7 +120,7 @@ impl BladvakApp<'_> for LemmingApp {
             })?;
             Ok(app)
         } else {
-            saved_state.handle_saved_state()?;
+            saved_state.handle_saved_state();
             Ok(saved_state)
         }
     }
