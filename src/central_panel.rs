@@ -131,8 +131,7 @@ impl LemmingApp {
                                             }
                                         }
                                         if count_modified == 0 {
-                                            errors
-                                                .push(format!("No modified line for {idx_diff}"));
+                                            errors.push(format!("No modified line for {idx_diff}"));
                                         }
                                     }
                                 });
