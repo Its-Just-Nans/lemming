@@ -16,6 +16,6 @@
 
 pub(crate) mod app;
 pub(crate) mod central_panel;
-pub(crate) mod format;
+pub(crate) mod patch;
 
 pub use app::LemmingApp;

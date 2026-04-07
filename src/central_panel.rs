@@ -7,7 +7,7 @@ use bladvak::{
 };
 use gitpatch::{Line, Patch};
 
-use crate::{app::LemmingApp, format::patch::PatchFile};
+use crate::{app::LemmingApp, patch::PatchFile};
 
 impl LemmingApp {
     /// App central panel
@@ -62,36 +62,38 @@ impl LemmingApp {
             .id_salt("parsed_column")
             .show(ui, |ui| {
                 let mut errors = vec![];
+                if let Some(metadata) = &patch_file.metadata {
                 CollapsingHeader::new("Metadata")
                     .id_salt("metadata".to_string())
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
                             ui.label("From");
-                            ui.label(&patch_file.commit_hash);
+                            ui.label(&metadata.commit_hash);
                             ui.label("Mon Sep 17 00:00:00 2001");
                         });
                         ui.horizontal(|ui| {
                             ui.label("From: ");
-                            ui.label(&patch_file.author);
-                            ui.label(&patch_file.email);
+                            ui.label(&metadata.author);
+                            ui.label(&metadata.email);
                         });
                         ui.horizontal(|ui| {
                             ui.label("Date: ");
-                            ui.label(&patch_file.date);
+                            ui.label(&metadata.date);
                         });
-                        ui.label(&patch_file.subject);
+                        ui.label(&metadata.subject);
                         ui.label("---");
-                        for one_stat in &patch_file.file_stats {
+                        for one_stat in &metadata.file_stats {
                             ui.horizontal(|ui| {
                                 ui.label(&one_stat.path);
                                 ui.label("|");
                                 ui.label(format!("{}", one_stat.changed_lines));
                             });
                         }
-                        ui.label(format!("files changes: {}", patch_file.files_changes));
-                        ui.label(format!("insertions: {}", patch_file.insertions));
-                        ui.label(format!("deletions: {}", patch_file.deletions));
+                        ui.label(format!("files changes: {}", metadata.files_changes));
+                        ui.label(format!("insertions: {}", metadata.insertions));
+                        ui.label(format!("deletions: {}", metadata.deletions));
                     });
+                }
                 for (idx_diff, one_diff) in patch_file.diffs.iter().enumerate() {
                     let diff = format!(
                         "diff --git {} {}\n{}\n",

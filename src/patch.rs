@@ -26,6 +26,15 @@ pub(crate) struct FileStat {
 /// Patch file
 #[derive(Debug)]
 pub(crate) struct PatchFile {
+    /// Patch metadata
+    pub(crate) metadata: Option<PatchMetadata>,
+    /// Diffs
+    pub(crate) diffs: Vec<Diff>,
+}
+
+/// Patch Metadata
+#[derive(Debug)]
+pub(crate) struct PatchMetadata {
     /// Commit hash
     pub(crate) commit_hash: String,
     /// Author
@@ -44,8 +53,6 @@ pub(crate) struct PatchFile {
     pub(crate) insertions: usize,
     /// Number of deletions
     pub(crate) deletions: usize,
-    /// Diffs
-    pub(crate) diffs: Vec<Diff>,
 }
 
 /// Diff
@@ -121,7 +128,6 @@ fn parse_file_stats(input: &str) -> IResult<&str, FileStat> {
 
 /// Parse diff
 fn parse_diff(input: &str) -> IResult<&str, Diff> {
-    let (input, _) = newline.parse(input)?;
     // diff --git a/foo b/foo
     let (input, _) = tag("diff --git ").parse(input)?;
 
@@ -202,19 +208,13 @@ fn parse_stats(input: &str) -> IResult<&str, (Vec<FileStat>, usize, usize, usize
     Ok((input, (file_stats, files_changes, insertions, deletions)))
 }
 
-/// Parse patch
-pub fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
-    let (input, commit_hash) = parse_commit_hash(input)?;
-    let (input, (author, email)) = parse_author(input)?;
-    let (input, date) = parse_date(input)?;
-    let (input, subject) = parse_subject(input)?;
-
-    let (input, _) = tag("---\n")(input)?;
-
-    let (mut input, (file_stats, files_changes, insertions, deletions)) = parse_stats(input)?;
-
-    let mut diffs = Vec::new();
-
+/// Parse file
+pub(crate) fn parse_file(input: &str) -> IResult<&str, PatchFile> {
+    if input.starts_with("From") {
+        return parse_patch(input);
+    }
+    let mut input = input;
+    let mut diffs = vec![];
     while let Ok((i, diff)) = parse_diff(input) {
         diffs.push(diff);
         input = i;
@@ -223,15 +223,46 @@ pub fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
     Ok((
         input,
         PatchFile {
-            commit_hash,
-            author,
-            email,
-            date,
-            subject,
-            file_stats,
-            files_changes,
-            insertions,
-            deletions,
+            metadata: None,
+            diffs,
+        },
+    ))
+}
+
+/// Parse patch
+pub(crate) fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
+    let (input, commit_hash) = parse_commit_hash(input)?;
+    let (input, (author, email)) = parse_author(input)?;
+    let (input, date) = parse_date(input)?;
+    let (input, subject) = parse_subject(input)?;
+
+    let (input, _) = tag("---\n")(input)?;
+
+    let (input, (file_stats, files_changes, insertions, deletions)) = parse_stats(input)?;
+
+    let mut diffs = Vec::new();
+
+    let (input, _) = newline.parse(input)?;
+    let mut input = input;
+    while let Ok((i, diff)) = parse_diff(input) {
+        diffs.push(diff);
+        input = i;
+    }
+
+    Ok((
+        input,
+        PatchFile {
+            metadata: Some(PatchMetadata {
+                commit_hash,
+                author,
+                email,
+                date,
+                subject,
+                file_stats,
+                files_changes,
+                insertions,
+                deletions,
+            }),
             diffs,
         },
     ))

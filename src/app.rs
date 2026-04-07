@@ -7,7 +7,7 @@ use bladvak::{
 };
 use std::path::PathBuf;
 
-use crate::format::patch::{PatchFile, parse_patch};
+use crate::patch::{PatchFile, parse_file};
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Default)]
@@ -28,7 +28,8 @@ pub struct LemmingApp {
 impl LemmingApp {
     /// parse patch
     pub(crate) fn update_patch(&mut self) -> Result<(), AppError> {
-        let (_, patch_file) = parse_patch(&self.patch_string)
+        self.parsed = None;
+        let (_, patch_file) = parse_file(&self.patch_string)
             .map_err(|e| format!("Error during patch parsing {e}"))?;
         self.parsed = Some(patch_file);
         Ok(())
@@ -117,7 +118,7 @@ mod tests {
     fn test_panic_file() {
         use gitpatch::Patch;
 
-        let sample = include_str!("../tests/panic.patch");
+        let sample = include_str!("../tests/panic.diff");
         let patch = Patch::from_single(sample);
         assert!(patch.is_err());
     }
