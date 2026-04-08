@@ -123,6 +123,7 @@ impl LemmingApp {
                         "diff --git {} {}\n{}\n",
                         one_diff.old_path, one_diff.new_path, one_diff.content
                     );
+                    let is_deletion = one_diff.content.starts_with("deleted");
                     match Patch::from_single(&diff) {
                         Ok(one_diff) => {
                             CollapsingHeader::new(format!("Diff {idx_diff}"))
@@ -147,7 +148,7 @@ impl LemmingApp {
 
                                             let first_ok = first_three.iter().all(|l| matches!(l, Line::Context(_)));
 
-                                            if !first_ok {
+                                            if !is_deletion && !first_ok {
                                                 errors.push(format!("Diff n{idx_diff} hunk n{idx_hunk}: Missing the three first context lines"));
                                             }
                                         }
