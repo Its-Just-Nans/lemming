@@ -1,13 +1,14 @@
 //! patch format parser
 
+use bladvak::log;
 use nom::{
     Err, IResult, Parser,
     branch::alt,
     bytes::complete::{tag, take_until, take_while, take_while1},
-    character::complete::{digit1, newline, space0, space1},
-    combinator::opt,
+    character::complete::{char, digit1, line_ending, newline, not_line_ending, space0, space1},
+    combinator::{map, opt},
     error::Error,
-    multi::many_till,
+    multi::{many_till, many0},
     sequence::{preceded, terminated},
 };
 
@@ -44,6 +45,8 @@ pub(crate) struct PatchMetadata {
     pub(crate) subject: String,
     /// File stats
     pub(crate) file_stats: Vec<FileStat>,
+    /// More file stats (delete, rename)
+    pub(crate) more_file_stats: Vec<String>,
     /// Number of files changes
     pub(crate) files_changes: usize,
     /// Number of insertions
@@ -113,7 +116,6 @@ fn parse_file_stats(input: &str) -> IResult<&str, FileStat> {
     let (input, _) = space0.parse(input)?;
     let (input, _) = take_while(|c| c == '+' || c == '-').parse(input)?;
     let (input, _) = newline.parse(input)?;
-
     Ok((
         input,
         FileStat {
@@ -143,12 +145,15 @@ fn parse_diff(input: &str) -> IResult<&str, Diff> {
         .parse(input)?;
 
     let (input, _) = newline.parse(input)?;
-
     // Everything until next diff, patch end, or EOF
     let (input, content) =
         opt(alt((take_until("\ndiff --git "), take_until("\n--\n")))).parse(input)?;
 
-    let content = content.unwrap_or(input);
+    let (input, content) = if let Some(some_content) = content {
+        (input, some_content)
+    } else {
+        ("", input)
+    };
 
     Ok((
         input,
@@ -207,18 +212,42 @@ fn parse_stats(input: &str) -> IResult<&str, (Vec<FileStat>, usize, usize, usize
     Ok((input, (file_stats, files_changes, insertions, deletions)))
 }
 
+/// Parse many diff
+pub(crate) fn parse_many_diffs(input: &str) -> Vec<Diff> {
+    let mut diffs = Vec::new();
+
+    let mut input = input;
+    loop {
+        match parse_diff(input) {
+            Ok((input_rest, diff)) => {
+                diffs.push(diff);
+                let input_rest = if let Ok((input_rest_without_newline, _)) =
+                    newline::<&str, nom::error::Error<&str>>.parse(input_rest)
+                {
+                    input_rest_without_newline
+                } else {
+                    input_rest
+                };
+                input = input_rest;
+                if input.is_empty() {
+                    break;
+                }
+            }
+            Err(e) => {
+                log::error!("Error during file parsing: {e}");
+                break;
+            }
+        }
+    }
+    diffs
+}
+
 /// Parse file
 pub(crate) fn parse_file(input: &str) -> IResult<&str, PatchFile> {
     if input.starts_with("From") {
         return parse_patch(input);
     }
-    let mut input = input;
-    let mut diffs = vec![];
-    while let Ok((i, diff)) = parse_diff(input) {
-        diffs.push(diff);
-        input = i;
-    }
-
+    let diffs = parse_many_diffs(input);
     Ok((
         input,
         PatchFile {
@@ -239,15 +268,20 @@ pub(crate) fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
 
     let (input, (file_stats, files_changes, insertions, deletions)) = parse_stats(input)?;
 
-    let mut diffs = Vec::new();
+    let (input, more) = match newline::<&str, nom::error::Error<&str>>.parse(input) {
+        Err(_) => {
+            let (input, items) = many0(map(
+                terminated(preceded(char(' '), not_line_ending), line_ending),
+                |s: &str| s.to_string(),
+            ))
+            .parse(input)?;
+            let (input, _) = newline.parse(input)?;
+            (input, items)
+        }
+        Ok((input, _)) => (input, vec![]),
+    };
 
-    let (input, _) = newline.parse(input)?;
-    let mut input = input;
-    while let Ok((i, diff)) = parse_diff(input) {
-        diffs.push(diff);
-        input = i;
-    }
-
+    let diffs = parse_many_diffs(input);
     Ok((
         input,
         PatchFile {
@@ -261,6 +295,7 @@ pub(crate) fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
                 files_changes,
                 insertions,
                 deletions,
+                more_file_stats: more,
             }),
             diffs,
         },
