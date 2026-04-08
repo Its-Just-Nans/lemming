@@ -58,9 +58,7 @@ impl LemmingApp {
             }
         }
         if !patch_errors.is_empty() {
-            let mut open = true;
             egui::Window::new("Patch errors")
-                .open(&mut open)
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {
                     for one_error in patch_errors {
@@ -74,7 +72,11 @@ impl LemmingApp {
     #[allow(clippy::too_many_lines)] // maybe reformat later
     fn parsed_column(&mut self, ui: &mut egui::Ui) -> Vec<String> {
         let Some(patch_file) = &self.parsed else {
-            ui.label("No patch file upload");
+            if self.parsing_error.is_some() {
+                ui.label("Error during patch parsing");
+            } else {
+                ui.label("No patch file upload");
+            }
             return vec![];
         };
         let mut errors = vec![];
@@ -111,6 +113,9 @@ impl LemmingApp {
                         ui.label(format!("files changes: {}", metadata.files_changes));
                         ui.label(format!("insertions: {}", metadata.insertions));
                         ui.label(format!("deletions: {}", metadata.deletions));
+                        for one_line in &metadata.more_file_stats {
+                                ui.label(one_line);
+                        }
                     });
                 }
                 for (idx_diff, one_diff) in patch_file.diffs.iter().enumerate() {
@@ -139,16 +144,11 @@ impl LemmingApp {
                                         let mut check_old_range_count = 0;
                                         if one_hunk.lines.len() >= 3 {
                                             let first_three = &one_hunk.lines[..3];
-                                            let last_three = &one_hunk.lines[one_hunk.lines.len() - 3..];
 
                                             let first_ok = first_three.iter().all(|l| matches!(l, Line::Context(_)));
-                                            let last_ok = last_three.iter().all(|l| matches!(l, Line::Context(_)));
 
                                             if !first_ok {
                                                 errors.push(format!("Diff n{idx_diff} hunk n{idx_hunk}: Missing the three first context lines"));
-                                            }
-                                            if !last_ok {
-                                                errors.push(format!("Diff n{idx_diff} hunk n{idx_hunk}: Missing the three last context lines"));
                                             }
                                         }
                                             let rich_text = |t: &str| RichText::new(t).monospace().size(10.0);
