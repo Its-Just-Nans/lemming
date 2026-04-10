@@ -185,7 +185,9 @@ impl LemmingApp {
                                 });
                         }
                         Err(e) => {
-                            ui.label("Failed to parsed diff");
+                            let msg =format!("Failed to parse diff n{idx_diff}");
+                            ui.label(&msg);
+                            errors.push((Color32::RED, msg));
                             ui.label(e.to_string());
                         }
                     }
