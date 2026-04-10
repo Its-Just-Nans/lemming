@@ -18,7 +18,7 @@ impl LemmingApp {
     ) {
         let mut changed = false;
         let mut patch_errors = if let Some(error) = &self.parsing_error {
-            vec![error.clone()]
+            vec![(Color32::RED, error.clone())]
         } else {
             vec![]
         };
@@ -61,8 +61,8 @@ impl LemmingApp {
             egui::Window::new("Patch errors")
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {
-                    for one_error in patch_errors {
-                        ui.colored_label(Color32::RED, &one_error);
+                    for (label_color, one_error) in patch_errors {
+                        ui.colored_label(label_color, &one_error);
                     }
                 });
         }
@@ -70,7 +70,7 @@ impl LemmingApp {
 
     /// show parsed patch
     #[allow(clippy::too_many_lines)] // maybe reformat later
-    fn parsed_column(&mut self, ui: &mut egui::Ui) -> Vec<String> {
+    fn parsed_column(&mut self, ui: &mut egui::Ui) -> Vec<(Color32, String)> {
         let Some(patch_file) = &self.parsed else {
             if self.parsing_error.is_some() {
                 ui.label("Error during patch parsing");
@@ -149,7 +149,7 @@ impl LemmingApp {
                                             let first_ok = first_three.iter().all(|l| matches!(l, Line::Context(_)));
 
                                             if !is_deletion && !first_ok {
-                                                errors.push(format!("Diff n{idx_diff} hunk n{idx_hunk}: Missing the three first context lines"));
+                                                errors.push((Color32::ORANGE, format!("Diff n{idx_diff} hunk n{idx_hunk}: Missing the three first context lines")));
                                             }
                                         }
                                             let rich_text = |t: &str| RichText::new(t).monospace().size(10.0);
@@ -173,13 +173,13 @@ impl LemmingApp {
                                             }
                                         }
                                         if count_modified == 0 {
-                                            errors.push(format!("Diff n{idx_diff} hunk n{idx_hunk}: No modified line"));
+                                            errors.push((Color32::RED, format!("Diff n{idx_diff} hunk n{idx_hunk}: No modified line")));
                                         }
                                         if check_new_range_count != one_hunk.new_range.count {
-                                            errors.push(format!("Diff n{idx_diff} hunk n{idx_hunk}: Invalid new range"));
+                                            errors.push((Color32::RED, format!("Diff n{idx_diff} hunk n{idx_hunk}: Invalid new range")));
                                         }
                                         if check_old_range_count != one_hunk.old_range.count {
-                                            errors.push(format!("Diff n{idx_diff} hunk n{idx_hunk}: Invalid old range"));
+                                            errors.push((Color32::RED, format!("Diff n{idx_diff} hunk n{idx_hunk}: Invalid old range")));
                                         }
                                     }
                                 });
