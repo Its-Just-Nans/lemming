@@ -7,7 +7,6 @@ use nom::{
     bytes::complete::{tag, take_until, take_while, take_while1},
     character::complete::{char, digit1, line_ending, newline, not_line_ending, space0, space1},
     combinator::{map, opt},
-    error::Error,
     multi::{many_till, many0},
     sequence::{preceded, terminated},
 };
@@ -122,7 +121,7 @@ fn parse_file_stats(input: &str) -> IResult<&str, FileStat> {
             path: path.to_string(),
             changed_lines: count
                 .parse()
-                .map_err(|_e| Err::Failure(Error::new(input, nom::error::ErrorKind::Digit)))?,
+                .map_err(|_e| Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit)))?,
         },
     ))
 }
@@ -191,15 +190,15 @@ fn parse_summary(input: &str) -> IResult<&str, (usize, usize, usize)> {
         (
             files
                 .parse()
-                .map_err(|_e| Err::Failure(Error::new(input, nom::error::ErrorKind::Digit)))?,
+                .map_err(|_e| Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit)))?,
             insertions
                 .unwrap_or("0")
                 .parse()
-                .map_err(|_e| Err::Failure(Error::new(input, nom::error::ErrorKind::Digit)))?,
+                .map_err(|_e| Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit)))?,
             deletions
                 .unwrap_or("0")
                 .parse()
-                .map_err(|_e| Err::Failure(Error::new(input, nom::error::ErrorKind::Digit)))?,
+                .map_err(|_e| Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit)))?,
         ),
     ))
 }
