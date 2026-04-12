@@ -119,9 +119,9 @@ fn parse_file_stats(input: &str) -> IResult<&str, FileStat> {
         input,
         FileStat {
             path: path.to_string(),
-            changed_lines: count
-                .parse()
-                .map_err(|_e| Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit)))?,
+            changed_lines: count.parse().map_err(|_e| {
+                Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
+            })?,
         },
     ))
 }
@@ -188,17 +188,15 @@ fn parse_summary(input: &str) -> IResult<&str, (usize, usize, usize)> {
     Ok((
         input,
         (
-            files
-                .parse()
-                .map_err(|_e| Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit)))?,
-            insertions
-                .unwrap_or("0")
-                .parse()
-                .map_err(|_e| Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit)))?,
-            deletions
-                .unwrap_or("0")
-                .parse()
-                .map_err(|_e| Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit)))?,
+            files.parse().map_err(|_e| {
+                Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
+            })?,
+            insertions.unwrap_or("0").parse().map_err(|_e| {
+                Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
+            })?,
+            deletions.unwrap_or("0").parse().map_err(|_e| {
+                Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Digit))
+            })?,
         ),
     ))
 }
