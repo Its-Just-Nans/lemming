@@ -1,4 +1,13 @@
 //! Lemming
+//!
+//! Web version at <https://lemming.n4n5.dev>
+//!
+//! ```sh
+//! cargo install lemming --locked
+//!
+//! lemming path/to/file.patch
+//! ```
+//!
 
 #![warn(clippy::all, rust_2018_idioms)]
 #![deny(
