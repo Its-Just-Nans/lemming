@@ -111,12 +111,14 @@ impl BladvakApp<'_> for LemmingApp {
         args: &[String],
     ) -> Result<Self, AppError> {
         if is_native() && args.len() > 1 {
+            use std::fs;
             let path = &args[1];
-            let bytes = std::fs::read(path)?;
+            let absolute_path = fs::canonicalize(&path)?;
+            let bytes = fs::read(&absolute_path)?;
             let mut app = saved_state;
             app.handle_file(File {
                 data: bytes,
-                path: PathBuf::from(path),
+                path: absolute_path,
             })?;
             Ok(app)
         } else {
