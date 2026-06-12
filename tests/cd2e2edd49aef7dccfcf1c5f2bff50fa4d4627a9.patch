@@ -1,0 +1,247 @@
+From cd2e2edd49aef7dccfcf1c5f2bff50fa4d4627a9 Mon Sep 17 00:00:00 2001
+From: n4n5 <its.just.n4n5@gmail.com>
+Date: Tue, 7 Apr 2026 09:32:37 -0600
+Subject: [PATCH] cleanup
+
+---
+ src/app.rs                        |  7 ++--
+ src/central_panel.rs              | 22 ++++++------
+ src/format/mod.rs                 |  3 --
+ src/lib.rs                        |  2 +-
+ src/{format => }/patch.rs         | 59 +++++++++++++++++++++++--------
+ tests/{panic.patch => panic.diff} |  0
+ 6 files changed, 62 insertions(+), 31 deletions(-)
+ delete mode 100644 src/format/mod.rs
+ rename src/{format => }/patch.rs (85%)
+ rename tests/{panic.patch => panic.diff} (100%)
+
+diff --git a/src/app.rs b/src/app.rs
+index 904401a..62644bd 100644
+--- a/src/app.rs
++++ b/src/app.rs
+@@ -7,7 +7,7 @@ use bladvak::{
+ };
+ use std::path::PathBuf;
+ 
+-use crate::format::patch::{PatchFile, parse_patch};
++use crate::patch::{PatchFile, parse_file};
+ 
+ /// We derive Deserialize/Serialize so we can persist app state on shutdown.
+ #[derive(serde::Deserialize, serde::Serialize, Debug, Default)]
+@@ -28,7 +28,8 @@ pub struct LemmingApp {
+ impl LemmingApp {
+     /// parse patch
+     pub(crate) fn update_patch(&mut self) -> Result<(), AppError> {
+-        let (_, patch_file) = parse_patch(&self.patch_string)
++        self.parsed = None;
++        let (_, patch_file) = parse_file(&self.patch_string)
+             .map_err(|e| format!("Error during patch parsing {e}"))?;
+         self.parsed = Some(patch_file);
+         Ok(())
+@@ -117,7 +118,7 @@ mod tests {
+     fn test_panic_file() {
+         use gitpatch::Patch;
+ 
+-        let sample = include_str!("../tests/panic.patch");
++        let sample = include_str!("../tests/panic.diff");
+         let patch = Patch::from_single(sample);
+         assert!(patch.is_err());
+     }
+diff --git a/src/central_panel.rs b/src/central_panel.rs
+index cf05c92..445a961 100644
+--- a/src/central_panel.rs
++++ b/src/central_panel.rs
+@@ -7,7 +7,7 @@ use bladvak::{
+ };
+ use gitpatch::{Line, Patch};
+ 
+-use crate::{app::LemmingApp, format::patch::PatchFile};
++use crate::{app::LemmingApp, patch::PatchFile};
+ 
+ impl LemmingApp {
+     /// App central panel
+@@ -62,36 +62,38 @@ impl LemmingApp {
+             .id_salt("parsed_column")
+             .show(ui, |ui| {
+                 let mut errors = vec![];
++                if let Some(metadata) = &patch_file.metadata {
+                 CollapsingHeader::new("Metadata")
+                     .id_salt("metadata".to_string())
+                     .show(ui, |ui| {
+                         ui.horizontal(|ui| {
+                             ui.label("From");
+-                            ui.label(&patch_file.commit_hash);
++                            ui.label(&metadata.commit_hash);
+                             ui.label("Mon Sep 17 00:00:00 2001");
+                         });
+                         ui.horizontal(|ui| {
+                             ui.label("From: ");
+-                            ui.label(&patch_file.author);
+-                            ui.label(&patch_file.email);
++                            ui.label(&metadata.author);
++                            ui.label(&metadata.email);
+                         });
+                         ui.horizontal(|ui| {
+                             ui.label("Date: ");
+-                            ui.label(&patch_file.date);
++                            ui.label(&metadata.date);
+                         });
+-                        ui.label(&patch_file.subject);
++                        ui.label(&metadata.subject);
+                         ui.label("---");
+-                        for one_stat in &patch_file.file_stats {
++                        for one_stat in &metadata.file_stats {
+                             ui.horizontal(|ui| {
+                                 ui.label(&one_stat.path);
+                                 ui.label("|");
+                                 ui.label(format!("{}", one_stat.changed_lines));
+                             });
+                         }
+-                        ui.label(format!("files changes: {}", patch_file.files_changes));
+-                        ui.label(format!("insertions: {}", patch_file.insertions));
+-                        ui.label(format!("deletions: {}", patch_file.deletions));
++                        ui.label(format!("files changes: {}", metadata.files_changes));
++                        ui.label(format!("insertions: {}", metadata.insertions));
++                        ui.label(format!("deletions: {}", metadata.deletions));
+                     });
++                }
+                 for (idx_diff, one_diff) in patch_file.diffs.iter().enumerate() {
+                     let diff = format!(
+                         "diff --git {} {}\n{}\n",
+diff --git a/src/format/mod.rs b/src/format/mod.rs
+deleted file mode 100644
+index 4c548fb..0000000
+--- a/src/format/mod.rs
++++ /dev/null
+@@ -1,3 +0,0 @@
+-//! Patch format
+-
+-pub(crate) mod patch;
+diff --git a/src/lib.rs b/src/lib.rs
+index dce2d51..b47441b 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -16,6 +16,6 @@
+ 
+ pub(crate) mod app;
+ pub(crate) mod central_panel;
+-pub(crate) mod format;
++pub(crate) mod patch;
+ 
+ pub use app::LemmingApp;
+diff --git a/src/format/patch.rs b/src/patch.rs
+similarity index 85%
+rename from src/format/patch.rs
+rename to src/patch.rs
+index ea730ec..6378486 100644
+--- a/src/format/patch.rs
++++ b/src/patch.rs
+@@ -26,6 +26,15 @@ pub(crate) struct FileStat {
+ /// Patch file
+ #[derive(Debug)]
+ pub(crate) struct PatchFile {
++    /// Patch metadata
++    pub(crate) metadata: Option<PatchMetadata>,
++    /// Diffs
++    pub(crate) diffs: Vec<Diff>,
++}
++
++/// Patch Metadata
++#[derive(Debug)]
++pub(crate) struct PatchMetadata {
+     /// Commit hash
+     pub(crate) commit_hash: String,
+     /// Author
+@@ -44,8 +53,6 @@ pub(crate) struct PatchFile {
+     pub(crate) insertions: usize,
+     /// Number of deletions
+     pub(crate) deletions: usize,
+-    /// Diffs
+-    pub(crate) diffs: Vec<Diff>,
+ }
+ 
+ /// Diff
+@@ -121,7 +128,6 @@ fn parse_file_stats(input: &str) -> IResult<&str, FileStat> {
+ 
+ /// Parse diff
+ fn parse_diff(input: &str) -> IResult<&str, Diff> {
+-    let (input, _) = newline.parse(input)?;
+     // diff --git a/foo b/foo
+     let (input, _) = tag("diff --git ").parse(input)?;
+ 
+@@ -202,8 +208,29 @@ fn parse_stats(input: &str) -> IResult<&str, (Vec<FileStat>, usize, usize, usize
+     Ok((input, (file_stats, files_changes, insertions, deletions)))
+ }
+ 
++/// Parse file
++pub(crate) fn parse_file(input: &str) -> IResult<&str, PatchFile> {
++    if input.starts_with("From") {
++        return parse_patch(input);
++    }
++    let mut input = input;
++    let mut diffs = vec![];
++    while let Ok((i, diff)) = parse_diff(input) {
++        diffs.push(diff);
++        input = i;
++    }
++
++    Ok((
++        input,
++        PatchFile {
++            metadata: None,
++            diffs,
++        },
++    ))
++}
++
+ /// Parse patch
+-pub fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
++pub(crate) fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
+     let (input, commit_hash) = parse_commit_hash(input)?;
+     let (input, (author, email)) = parse_author(input)?;
+     let (input, date) = parse_date(input)?;
+@@ -211,10 +238,12 @@ pub fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
+ 
+     let (input, _) = tag("---\n")(input)?;
+ 
+-    let (mut input, (file_stats, files_changes, insertions, deletions)) = parse_stats(input)?;
++    let (input, (file_stats, files_changes, insertions, deletions)) = parse_stats(input)?;
+ 
+     let mut diffs = Vec::new();
+ 
++    let (input, _) = newline.parse(input)?;
++    let mut input = input;
+     while let Ok((i, diff)) = parse_diff(input) {
+         diffs.push(diff);
+         input = i;
+@@ -223,15 +252,17 @@ pub fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
+     Ok((
+         input,
+         PatchFile {
+-            commit_hash,
+-            author,
+-            email,
+-            date,
+-            subject,
+-            file_stats,
+-            files_changes,
+-            insertions,
+-            deletions,
++            metadata: Some(PatchMetadata {
++                commit_hash,
++                author,
++                email,
++                date,
++                subject,
++                file_stats,
++                files_changes,
++                insertions,
++                deletions,
++            }),
+             diffs,
+         },
+     ))
+diff --git a/tests/panic.patch b/tests/panic.diff
+similarity index 100%
+rename from tests/panic.patch
+rename to tests/panic.diff
