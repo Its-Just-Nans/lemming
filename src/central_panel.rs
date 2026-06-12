@@ -119,7 +119,7 @@ impl LemmingApp {
                     });
                 }
                 for (idx_diff, one_diff) in patch_file.diffs.iter().enumerate() {
-                    let content = if one_diff.content.ends_with("\n") {
+                    let content = if one_diff.content.ends_with('\n') {
                         one_diff.content.strip_suffix("\n").unwrap_or(&one_diff.content)
                     } else {
                         &one_diff.content
@@ -204,6 +204,7 @@ impl LemmingApp {
     }
 }
 
+/// Check if the patch is correct
 fn check_patch(
     idx_diff: usize,
     one_diff: &Patch<'_>,
@@ -228,7 +229,7 @@ fn check_patch(
                 ));
             }
         }
-        for one_line in one_hunk.lines.iter() {
+        for one_line in &one_hunk.lines {
             match one_line {
                 Line::Add(_) => {
                     count_modified += 1;
