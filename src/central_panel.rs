@@ -119,11 +119,16 @@ impl LemmingApp {
                     });
                 }
                 for (idx_diff, one_diff) in patch_file.diffs.iter().enumerate() {
+                    let content = if one_diff.content.ends_with("\n") {
+                        one_diff.content.strip_suffix("\n").unwrap_or(&one_diff.content)
+                    } else {
+                        &one_diff.content
+                    };
                     let diff = format!(
                         "diff --git {} {}\n{}\n",
-                        one_diff.old_path, one_diff.new_path, one_diff.content
+                        one_diff.old_path, one_diff.new_path, content
                     );
-                    let is_deletion = one_diff.content.starts_with("deleted");
+                    let is_deletion = content.starts_with("deleted");
                     match Patch::from_single(&diff) {
                         Ok(one_diff) => {
                             CollapsingHeader::new(format!("Diff {idx_diff}"))
@@ -185,10 +190,9 @@ impl LemmingApp {
                                 });
                         }
                         Err(e) => {
-                            let msg =format!("Failed to parse diff n{idx_diff}");
+                            let msg =format!("Failed to parse diff n{idx_diff}\nParseError: line {} offset {} fragment {}", e.line, e.offset, e.fragment);
                             ui.label(&msg);
                             errors.push((Color32::RED, msg));
-                            ui.label(e.to_string());
                         }
                     }
                 }
