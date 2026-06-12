@@ -131,6 +131,9 @@ impl LemmingApp {
                     let is_deletion = content.starts_with("deleted");
                     match Patch::from_single(&diff) {
                         Ok(one_diff) => {
+                            if let Some(diff_errors) = check_patch(idx_diff, &one_diff, is_deletion) {
+                                errors.extend(diff_errors);
+                            }
                             CollapsingHeader::new(format!("Diff {idx_diff}"))
                                 .id_salt(format!("diff_{idx_diff}"))
                                 .show(ui, |ui| {
@@ -157,7 +160,7 @@ impl LemmingApp {
                                                 errors.push((Color32::ORANGE, format!("Diff n{idx_diff} hunk n{idx_hunk}: Missing the three first context lines")));
                                             }
                                         }
-                                            let rich_text = |t: &str| RichText::new(t).monospace().size(10.0);
+                                        let rich_text = |t: &str| RichText::new(t).monospace().size(10.0);
                                         for one_line in one_hunk.lines {
                                             match one_line {
                                                 Line::Add(l) => {
@@ -199,4 +202,69 @@ impl LemmingApp {
             });
         errors
     }
+}
+
+fn check_patch(
+    idx_diff: usize,
+    one_diff: &Patch<'_>,
+    is_deletion: bool,
+) -> Option<Vec<(Color32, String)>> {
+    let mut errors = vec![];
+    for (idx_hunk, one_hunk) in one_diff.hunks.iter().enumerate() {
+        let mut count_modified = 0;
+        let mut check_new_range_count = one_hunk.old_range.count;
+        let mut check_old_range_count = 0;
+        if one_hunk.lines.len() >= 3 {
+            let first_three = &one_hunk.lines[..3];
+
+            let first_ok = first_three.iter().all(|l| matches!(l, Line::Context(_)));
+
+            if !is_deletion && !first_ok {
+                errors.push((
+                    Color32::ORANGE,
+                    format!(
+                        "Diff n{idx_diff} hunk n{idx_hunk}: Missing the three first context lines"
+                    ),
+                ));
+            }
+        }
+        for one_line in one_hunk.lines.iter() {
+            match one_line {
+                Line::Add(_) => {
+                    count_modified += 1;
+                    check_new_range_count += 1;
+                }
+                Line::Context(_) => {
+                    check_old_range_count += 1;
+                }
+                Line::Remove(_) => {
+                    count_modified += 1;
+                    check_new_range_count -= 1;
+                    check_old_range_count += 1;
+                }
+            }
+        }
+        if count_modified == 0 {
+            errors.push((
+                Color32::RED,
+                format!("Diff n{idx_diff} hunk n{idx_hunk}: No modified line"),
+            ));
+        }
+        if check_new_range_count != one_hunk.new_range.count {
+            errors.push((
+                Color32::RED,
+                format!("Diff n{idx_diff} hunk n{idx_hunk}: Invalid new range"),
+            ));
+        }
+        if check_old_range_count != one_hunk.old_range.count {
+            errors.push((
+                Color32::RED,
+                format!("Diff n{idx_diff} hunk n{idx_hunk}: Invalid old range"),
+            ));
+        }
+    }
+    if !errors.is_empty() {
+        return Some(errors);
+    }
+    None
 }
