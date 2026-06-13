@@ -75,7 +75,7 @@ impl LemmingApp {
             if self.parsing_error.is_some() {
                 ui.label("Error during patch parsing");
             } else {
-                ui.label("No patch file upload");
+                ui.label("No patch file uploaded");
             }
             return vec![];
         };
