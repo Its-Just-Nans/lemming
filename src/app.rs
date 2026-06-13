@@ -139,4 +139,57 @@ mod tests {
         let patch = Patch::from_single(sample);
         assert!(patch.is_err());
     }
+
+    fn check_on_patch_file(patch_content: &str) -> std::io::Result<()> {
+        use crate::central_panel::check_patch;
+        use crate::patch::parse_file;
+        use gitpatch::Patch;
+
+        let (_, patch_file) = parse_file(&patch_content)
+            .map_err(|e| std::io::Error::other(format!("Error during patch parsing {e}")))?;
+        for (idx_diff, one_diff) in patch_file.diffs.iter().enumerate() {
+            let content = if one_diff.content.ends_with('\n') {
+                one_diff
+                    .content
+                    .strip_suffix("\n")
+                    .unwrap_or(&one_diff.content)
+            } else {
+                &one_diff.content
+            };
+            let diff = format!(
+                "diff --git {} {}\n{}\n",
+                one_diff.old_path, one_diff.new_path, content
+            );
+            let is_deletion = content.starts_with("deleted");
+            match Patch::from_single(&diff) {
+                Ok(one_diff) => {
+                    if let Some(_diff_errors) = check_patch(idx_diff, &one_diff, is_deletion) {
+                        return Err(std::io::Error::other("Diff inside patch contains error"));
+                    }
+                }
+                Err(_err) => {
+                    return Err(std::io::Error::other("Patch contains error"));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_read_patch() {
+        let file_content = include_str!("../tests/a.patch");
+        check_on_patch_file(file_content).unwrap();
+
+        let file_content = include_str!("../tests/b.patch");
+        check_on_patch_file(file_content).unwrap();
+
+        let file_content = include_str!("../tests/cd2e2edd49aef7dccfcf1c5f2bff50fa4d4627a9.patch");
+        check_on_patch_file(file_content).unwrap();
+    }
+
+    #[test]
+    fn test_read_patch_fail() {
+        let file_content = include_str!("../tests/b_icnal.patch");
+        check_on_patch_file(file_content).unwrap_err();
+    }
 }
