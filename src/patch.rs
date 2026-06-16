@@ -7,6 +7,7 @@ use nom::{
     bytes::complete::{tag, take_until, take_while, take_while1},
     character::complete::{char, digit1, line_ending, newline, not_line_ending, space0, space1},
     combinator::{map, opt},
+    error::Error,
     multi::{many_till, many0},
     sequence::{preceded, terminated},
 };
@@ -210,9 +211,9 @@ fn parse_stats(input: &str) -> IResult<&str, (Vec<FileStat>, usize, usize, usize
 }
 
 /// Parse many diff
-pub(crate) fn parse_many_diffs(input: &str) -> Vec<Diff> {
+pub(crate) fn parse_many_diffs(input: &str) -> (Vec<Diff>, Option<Err<Error<&str>>>) {
     let mut diffs = Vec::new();
-
+    let mut error = None;
     let mut input = input;
     loop {
         match parse_diff(input) {
@@ -232,11 +233,12 @@ pub(crate) fn parse_many_diffs(input: &str) -> Vec<Diff> {
             }
             Err(e) => {
                 log::error!("Error during file parsing: {e}");
+                error = Some(e);
                 break;
             }
         }
     }
-    diffs
+    (diffs, error)
 }
 
 /// Parse file
@@ -244,7 +246,12 @@ pub(crate) fn parse_file(input: &str) -> IResult<&str, PatchFile> {
     if input.starts_with("From") {
         return parse_patch(input);
     }
-    let diffs = parse_many_diffs(input);
+    let (diffs, possible_error) = parse_many_diffs(input);
+    if diffs.is_empty()
+        && let Some(err) = possible_error
+    {
+        return Err(err);
+    }
     Ok((
         input,
         PatchFile {
@@ -278,7 +285,12 @@ pub(crate) fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
         Ok((input, _)) => (input, vec![]),
     };
 
-    let diffs = parse_many_diffs(input);
+    let (diffs, possible_error) = parse_many_diffs(input);
+    if diffs.is_empty()
+        && let Some(err) = possible_error
+    {
+        return Err(err);
+    }
     Ok((
         input,
         PatchFile {

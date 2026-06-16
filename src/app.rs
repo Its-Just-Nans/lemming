@@ -145,8 +145,8 @@ mod tests {
         use crate::patch::parse_file;
         use gitpatch::Patch;
 
-        let (_, patch_file) = parse_file(&patch_content)
-            .map_err(|e| std::io::Error::other(format!("Error during patch parsing {e}")))?;
+        let (_, patch_file) = parse_file(patch_content)
+            .map_err(|e| std::io::Error::other(format!("Error while patch parsing {e}")))?;
         for (idx_diff, one_diff) in patch_file.diffs.iter().enumerate() {
             let content = if one_diff.content.ends_with('\n') {
                 one_diff
@@ -176,6 +176,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn test_read_patch() {
         let file_content = include_str!("../tests/a.patch");
         check_on_patch_file(file_content).unwrap();
@@ -188,6 +189,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn test_read_patch_fail() {
         let file_content = include_str!("../tests/b_icnal.patch");
         check_on_patch_file(file_content).unwrap_err();
