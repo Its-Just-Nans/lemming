@@ -37,15 +37,6 @@ impl LemmingApp {
         self.parsed = Some(patch_file);
         Ok(())
     }
-
-    /// Handle the saved state
-    pub(crate) fn handle_saved_state(&mut self) {
-        if !self.patch_string.is_empty()
-            && let Err(e) = self.update_patch()
-        {
-            self.parsing_error = Some(e.to_string());
-        }
-    }
 }
 
 impl BladvakApp<'_> for LemmingApp {
@@ -69,8 +60,9 @@ impl BladvakApp<'_> for LemmingApp {
     fn handle_file(&mut self, file: File) -> Result<(), AppError> {
         self.patch_string = String::from_utf8_lossy(&file.data).to_string();
         self.filename = file.path;
-        if let Err(e) = self.update_patch() {
-            self.parsing_error = Some(e.to_string());
+        if let Err(_e) = self.update_patch() {
+            self.parsing_error = Some("Error while parsing the file".to_string());
+            self.patch_string.clear();
         }
         Ok(())
     }
@@ -122,7 +114,11 @@ impl BladvakApp<'_> for LemmingApp {
             })?;
             Ok(app)
         } else {
-            saved_state.handle_saved_state();
+            if !saved_state.patch_string.is_empty()
+                && let Err(e) = saved_state.update_patch()
+            {
+                saved_state.parsing_error = Some(e.to_string());
+            }
             Ok(saved_state)
         }
     }
@@ -146,7 +142,7 @@ mod tests {
         use gitpatch::Patch;
 
         let (_, patch_file) = parse_file(patch_content)
-            .map_err(|e| std::io::Error::other(format!("Error while patch parsing {e}")))?;
+            .map_err(|e| std::io::Error::other(format!("Error check_on_patch_file() {e}")))?;
         for (idx_diff, one_diff) in patch_file.diffs.iter().enumerate() {
             let content = if one_diff.content.ends_with('\n') {
                 one_diff

@@ -232,7 +232,7 @@ pub(crate) fn parse_many_diffs(input: &str) -> (Vec<Diff>, Option<Err<Error<&str
                 }
             }
             Err(e) => {
-                log::error!("Error during file parsing: {e}");
+                log::error!("Error while parsing many diffs");
                 error = Some(e);
                 break;
             }

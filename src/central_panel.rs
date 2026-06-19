@@ -73,7 +73,7 @@ impl LemmingApp {
     fn parsed_column(&mut self, ui: &mut egui::Ui) -> Vec<(Color32, String)> {
         let Some(patch_file) = &self.parsed else {
             if self.parsing_error.is_some() {
-                ui.label("Error during patch parsing");
+                ui.label("Error while parsing the file");
             } else {
                 ui.label("No patch file uploaded");
             }
