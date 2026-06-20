@@ -22,10 +22,6 @@ pub struct LemmingApp {
     /// Parsed patch
     #[serde(skip)]
     pub(crate) parsed: Option<PatchFile>,
-
-    /// Parsing error
-    #[serde(skip)]
-    pub(crate) parsing_error: Option<String>,
 }
 
 impl LemmingApp {
@@ -61,8 +57,8 @@ impl BladvakApp<'_> for LemmingApp {
         self.patch_string = String::from_utf8_lossy(&file.data).to_string();
         self.filename = file.path;
         if let Err(_e) = self.update_patch() {
-            self.parsing_error = Some("Error while parsing the file".to_string());
             self.patch_string.clear();
+            return Err("Parsing error while parsing the file".into());
         }
         Ok(())
     }
@@ -101,6 +97,7 @@ impl BladvakApp<'_> for LemmingApp {
         mut saved_state: Self,
         _cc: &CreationContext<'_>,
         args: &[String],
+        error_manager: &mut ErrorManager,
     ) -> Result<Self, AppError> {
         if is_native() && args.len() > 1 {
             use std::fs;
@@ -108,16 +105,21 @@ impl BladvakApp<'_> for LemmingApp {
             let absolute_path = fs::canonicalize(path)?;
             let bytes = fs::read(&absolute_path)?;
             let mut app = saved_state;
-            app.handle_file(File {
+            if let Err(e) = app.handle_file(File {
                 data: bytes,
                 path: absolute_path,
-            })?;
+            }) {
+                error_manager.add_error(e);
+            }
             Ok(app)
         } else {
-            if !saved_state.patch_string.is_empty()
-                && let Err(e) = saved_state.update_patch()
-            {
-                saved_state.parsing_error = Some(e.to_string());
+            if saved_state.patch_string.is_empty() {
+                saved_state.filename = PathBuf::new();
+            } else {
+                // Try to parse the patch file
+                if let Err(e) = saved_state.update_patch() {
+                    error_manager.add_error(e);
+                }
             }
             Ok(saved_state)
         }

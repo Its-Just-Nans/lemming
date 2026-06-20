@@ -14,16 +14,12 @@ impl LemmingApp {
     pub(crate) fn app_central_panel(
         &mut self,
         ui: &mut egui::Ui,
-        _error_manager: &mut ErrorManager,
+        error_manager: &mut ErrorManager,
     ) {
         let mut changed = false;
-        let mut patch_errors = if let Some(error) = &self.parsing_error {
-            vec![(Color32::RED, error.clone())]
-        } else {
-            vec![]
-        };
+        let mut patch_errors = vec![];
         ui.columns(2, |columns| {
-            patch_errors.extend(self.parsed_column(&mut columns[0]));
+            patch_errors.extend(self.parsed_column(&mut columns[0], error_manager));
             egui::ScrollArea::vertical()
                 .id_salt("raw_column")
                 .show(&mut columns[1], |ui| {
@@ -52,9 +48,9 @@ impl LemmingApp {
         });
         if changed {
             if let Err(e) = self.update_patch() {
-                self.parsing_error = Some(e.to_string());
+                error_manager.add_error(e.to_string());
             } else {
-                self.parsing_error = None;
+                error_manager.clear();
             }
         }
         if !patch_errors.is_empty() {
@@ -70,9 +66,13 @@ impl LemmingApp {
 
     /// show parsed patch
     #[allow(clippy::too_many_lines)] // maybe reformat later
-    fn parsed_column(&mut self, ui: &mut egui::Ui) -> Vec<(Color32, String)> {
+    fn parsed_column(
+        &mut self,
+        ui: &mut egui::Ui,
+        error_manager: &mut ErrorManager,
+    ) -> Vec<(Color32, String)> {
         let Some(patch_file) = &self.parsed else {
-            if self.parsing_error.is_some() {
+            if error_manager.is_some_error() {
                 ui.label("Error while parsing the file");
             } else {
                 ui.label("No patch file uploaded");

@@ -11,8 +11,9 @@ keywords = ["patch"]
 categories = ["gui", "parsing", "visualization"]
 
 [dependencies]
+bladvak = "1.3.4"
+# bladvak = { path = "../bladvak/" }
 gitpatch = "0.7.1"
-bladvak = "1.3.2"
 nom = "8.0.0"
 patch = "0.7.0"
 serde = { version = "1.0.228", features = ["derive"] }
