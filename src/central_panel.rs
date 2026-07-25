@@ -16,6 +16,14 @@ impl LemmingApp {
         ui: &mut egui::Ui,
         error_manager: &mut ErrorManager,
     ) {
+        if self.documents.get_current_doc_mut().is_none() {
+            bladvak::utils::central_ui(ui, |ui| {
+                ui.heading(concat!("Welcome to ", env!("CARGO_PKG_NAME")));
+                ui.label("No document opened");
+            });
+            return;
+        }
+
         let mut changed = false;
         let mut patch_errors = vec![];
         ui.columns(2, |columns| {
@@ -23,6 +31,9 @@ impl LemmingApp {
             egui::ScrollArea::vertical()
                 .id_salt("raw_column")
                 .show(&mut columns[1], |ui| {
+                    let Some(document) = self.documents.get_current_doc_mut() else {
+                        return;
+                    };
                     let mut layouter =
                         |ui: &egui::Ui, buf: &dyn egui::TextBuffer, wrap_width: f32| {
                             let mut layout_job = egui_extras::syntax_highlighting::highlight(
@@ -35,7 +46,7 @@ impl LemmingApp {
                             layout_job.wrap.max_width = wrap_width;
                             ui.fonts_mut(|f| f.layout_job(layout_job))
                         };
-                    let multiliner = egui::TextEdit::multiline(&mut self.patch_string)
+                    let multiliner = egui::TextEdit::multiline(&mut document.patch_string)
                         .font(egui::FontId::monospace(12.0)) // for cursor height
                         .code_editor()
                         .desired_rows(10)
@@ -47,7 +58,10 @@ impl LemmingApp {
                 });
         });
         if changed {
-            if let Err(e) = self.update_patch() {
+            let Some(document) = self.documents.get_current_doc_mut() else {
+                return;
+            };
+            if let Err(e) = document.update_patch() {
                 error_manager.add_error(e.to_string());
             } else {
                 error_manager.clear();
@@ -71,7 +85,10 @@ impl LemmingApp {
         ui: &mut egui::Ui,
         error_manager: &mut ErrorManager,
     ) -> Vec<(Color32, String)> {
-        let Some(patch_file) = &self.parsed else {
+        let Some(document) = self.documents.get_current_doc_mut() else {
+            return vec![];
+        };
+        let Some(patch_file) = &document.parsed else {
             if error_manager.is_some_error() {
                 ui.label("Error while parsing the file");
             } else {

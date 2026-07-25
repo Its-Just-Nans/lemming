@@ -1,37 +1,36 @@
 //! Lemming app
 
+use std::path::PathBuf;
+
 use bladvak::{
     AppError, BladvakApp, ErrorManager, File,
     eframe::{CreationContext, egui},
-    utils::is_native,
+    utils::{Documents, is_native},
 };
-use std::path::PathBuf;
 
-use crate::patch::{PatchFile, parse_file};
+use crate::document::Document;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[derive(serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
 #[serde(default)]
 pub struct LemmingApp {
-    /// Current patch
-    pub(crate) patch_string: String,
-
-    /// Current patch filename
-    pub(crate) filename: PathBuf,
-
-    /// Parsed patch
-    #[serde(skip)]
-    pub(crate) parsed: Option<PatchFile>,
+    /// List of documents
+    pub(crate) documents: Documents<Document>,
 }
 
-impl LemmingApp {
-    /// parse patch
-    pub(crate) fn update_patch(&mut self) -> Result<(), AppError> {
-        self.parsed = None;
-        let (_, patch_file) = parse_file(&self.patch_string)
-            .map_err(|e| format!("Error during patch parsing {e}"))?;
-        self.parsed = Some(patch_file);
-        Ok(())
+/// Demo patch
+const DEMO_PATCH: &str = include_str!("../tests/a.patch");
+
+impl Default for LemmingApp {
+    fn default() -> Self {
+        let document = Document {
+            patch_string: DEMO_PATCH.to_string(),
+            filename: PathBuf::from("demo.patch"),
+            parsed: None,
+        };
+        let mut documents = Documents::default();
+        documents.push(document);
+        Self { documents }
     }
 }
 
@@ -54,18 +53,25 @@ impl BladvakApp<'_> for LemmingApp {
     }
 
     fn handle_file(&mut self, file: File) -> Result<(), AppError> {
-        self.patch_string = String::from_utf8_lossy(&file.data).to_string();
-        self.filename = file.path;
-        if let Err(_e) = self.update_patch() {
-            self.patch_string.clear();
-            return Err("Parsing error while parsing the file".into());
+        let mut document = Document {
+            patch_string: String::from_utf8_lossy(&file.data).to_string(),
+            filename: file.path,
+            parsed: None,
+        };
+        if let Err(_e) = document.update_patch() {
+            document.patch_string.clear();
+            return Err(format!(
+                "Parsing error while parsing the file {}",
+                document.filename.display()
+            )
+            .into());
         }
+        self.documents.push(document);
         Ok(())
     }
 
     fn top_panel(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
-        ui.label("Filename:");
-        ui.label(format!("{}", self.filename.display()));
+        self.documents.show_file_list(ui);
     }
 
     fn menu_file(&mut self, _ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
@@ -89,8 +95,7 @@ impl BladvakApp<'_> for LemmingApp {
     }
 
     fn icon() -> &'static [u8] {
-        // &include_bytes!("../assets/icon-256.png")[..]
-        &[]
+        &include_bytes!("../assets/icon-256.png")[..]
     }
 
     fn try_new_with_args(
@@ -101,24 +106,37 @@ impl BladvakApp<'_> for LemmingApp {
     ) -> Result<Self, AppError> {
         if is_native() && args.len() > 1 {
             use std::fs;
-            let path = &args[1];
-            let absolute_path = fs::canonicalize(path)?;
-            let bytes = fs::read(&absolute_path)?;
             let mut app = saved_state;
-            if let Err(e) = app.handle_file(File {
-                data: bytes,
-                path: absolute_path,
-            }) {
-                error_manager.add_error(e);
+            // do not clear the documents since we save them
+            // app.documents.clear();
+            for one_path in &args[1..] {
+                let absolute_path = fs::canonicalize(one_path)
+                    .map_err(|e| format!("Unable to canonicalize path '{one_path}': {e}"))?;
+                let bytes = std::fs::read(&absolute_path).map_err(|e| {
+                    format!("Unable to read file '{}': {e}", absolute_path.display())
+                })?;
+                let document = Document {
+                    patch_string: String::from_utf8_lossy(&bytes).to_string(),
+                    filename: absolute_path,
+                    parsed: None,
+                };
+                app.documents.push(document);
+            }
+            // update all
+            for one_doc in &mut app.documents {
+                // Try to parse the patch file
+                if let Err(e) = one_doc.update_patch() {
+                    error_manager.add_error(e);
+                }
             }
             Ok(app)
         } else {
-            if saved_state.patch_string.is_empty() {
-                saved_state.filename = PathBuf::new();
-            } else {
-                // Try to parse the patch file
-                if let Err(e) = saved_state.update_patch() {
-                    error_manager.add_error(e);
+            if saved_state.documents.is_some() {
+                for one_doc in &mut saved_state.documents {
+                    // Try to parse the patch file
+                    if let Err(e) = one_doc.update_patch() {
+                        error_manager.add_error(e);
+                    }
                 }
             }
             Ok(saved_state)
