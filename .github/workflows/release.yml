@@ -76,7 +76,6 @@ jobs:
 
     build:
         name: ${{ matrix.job.target }} (${{ matrix.job.os }})
-        if: contains(join(github.event.commits.*.modified, ' '), 'Cargo.toml') || contains(join(github.event.commits.*.added, ' '), 'Cargo.toml')
         runs-on: ${{ matrix.job.os }}
         needs: crate_metadata
         strategy:
@@ -116,7 +115,7 @@ jobs:
                   targets: ${{ matrix.job.target }}
                   # On windows, for now build with correct version, so that it works on windows 7.
                   # When we update the MSRV again, we'll need to revisit this, and probably drop support for Win7
-                  toolchain: "${{ contains(matrix.job.target, 'windows-') && '1.94' || 'stable' }}"
+                  toolchain: "${{ contains(matrix.job.target, 'windows-') && '1.95' || 'stable' }}"
 
             - name: Install cross
               if: matrix.job.use-cross

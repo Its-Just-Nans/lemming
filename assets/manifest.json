@@ -1,6 +1,6 @@
 {
-    "name": "lemming PWA",
-    "short_name": "lemming-pwa",
+    "name": "lemming",
+    "short_name": "lemming",
     "icons": [
         {
             "src": "./assets/icon-256.png",
