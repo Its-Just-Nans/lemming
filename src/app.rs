@@ -8,7 +8,7 @@ use bladvak::{
     utils::{Documents, is_native},
 };
 
-use crate::document::Document;
+use crate::{document::Document, panels::Info};
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
@@ -23,14 +23,22 @@ const DEMO_PATCH: &str = include_str!("../tests/a.patch");
 
 impl Default for LemmingApp {
     fn default() -> Self {
+        let (filename, patch_string) = Self::load_default();
         let document = Document {
-            patch_string: DEMO_PATCH.to_string(),
-            filename: PathBuf::from("demo.patch"),
+            patch_string,
+            filename,
             parsed: None,
         };
         let mut documents = Documents::default();
         documents.push(document);
         Self { documents }
+    }
+}
+
+impl LemmingApp {
+    /// Load the default demo patch
+    pub(crate) fn load_default() -> (PathBuf, String) {
+        (PathBuf::from("demo.patch"), DEMO_PATCH.to_string())
     }
 }
 
@@ -41,7 +49,7 @@ impl BladvakApp<'_> for LemmingApp {
     }
 
     fn panel_list(&self) -> Vec<Box<dyn bladvak::app::BladvakPanel<App = Self>>> {
-        vec![]
+        vec![Box::new(Info)]
     }
 
     fn is_side_panel(&self) -> bool {

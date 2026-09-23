@@ -11,12 +11,12 @@ keywords = ["patch"]
 categories = ["gui", "parsing", "visualization"]
 
 [dependencies]
-bladvak = "1.3.26"
+bladvak = "1.4.0"
 # bladvak = { path = "../bladvak/" }
 gitpatch = "0.7.1"
 nom = "8.0.0"
 patch = "0.7.0"
-serde = { version = "1.0.228", features = ["derive"] }
+serde = { version = "1.0.229", features = ["derive"] }
 
 [patch.crates-io]
 gitpatch = { git = "https://github.com/Its-Just-Nans/gitpatch.git", branch = "remove-assert" }
