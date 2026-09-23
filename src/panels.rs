@@ -27,14 +27,16 @@ impl BladvakPanel for Info {
         &self,
         app: &mut Self::App,
         ui: &mut egui::Ui,
-        _error_manager: &mut bladvak::ErrorManager,
+        error_manager: &mut bladvak::ErrorManager,
     ) {
         if ui.button("Default patch").clicked() {
             let (filename, patch_string) = LemmingApp::load_default();
-            app.handle_file(bladvak::File {
+            if let Err(err) = app.handle_file(bladvak::File {
                 data: patch_string.into_bytes(),
                 path: filename,
-            });
+            }) {
+                error_manager.add_error(err);
+            }
         }
     }
 
