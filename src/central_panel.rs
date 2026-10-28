@@ -103,52 +103,55 @@ impl LemmingApp {
             .id_salt("parsed_column")
             .show(ui, |ui| {
                 if let Some(metadata) = &patch_file.metadata {
-                CollapsingHeader::new("Metadata")
-                    .id_salt("metadata".to_string())
-                    .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.label("From");
-                            ui.label(&metadata.commit_hash);
-                            ui.label("Mon Sep 17 00:00:00 2001");
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("From: ");
-                            ui.label(&metadata.author);
-                            ui.label(&metadata.email);
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Date: ");
-                            ui.label(&metadata.date);
-                        });
-                        ui.label(&metadata.subject);
-                        ui.label("---");
-                        for one_stat in &metadata.file_stats {
+                    CollapsingHeader::new("Metadata")
+                        .id_salt("metadata".to_string())
+                        .show(ui, |ui| {
                             ui.horizontal(|ui| {
-                                ui.label(&one_stat.path);
-                                ui.label("|");
-                                ui.label(format!("{}", one_stat.changed_lines));
+                                ui.label("From");
+                                ui.label(&metadata.commit_hash);
+                                ui.label("Mon Sep 17 00:00:00 2001");
                             });
-                        }
-                        ui.label(format!("files changes: {}", metadata.files_changes));
-                        ui.label(format!("insertions: {}", metadata.insertions));
-                        ui.label(format!("deletions: {}", metadata.deletions));
-                        for one_line in &metadata.more_file_stats {
+                            ui.horizontal(|ui| {
+                                ui.label("From: ");
+                                ui.label(&metadata.author);
+                                ui.label(&metadata.email);
+                            });
+                            ui.horizontal(|ui| {
+                                ui.label("Date: ");
+                                ui.label(&metadata.date);
+                            });
+                            ui.label(&metadata.subject);
+                            ui.label("---");
+                            for one_stat in &metadata.file_stats {
+                                ui.horizontal(|ui| {
+                                    ui.label(&one_stat.path);
+                                    ui.label("|");
+                                    ui.label(format!("{}", one_stat.changed_lines));
+                                });
+                            }
+                            ui.label(format!("files changes: {}", metadata.files_changes));
+                            ui.label(format!("insertions: {}", metadata.insertions));
+                            ui.label(format!("deletions: {}", metadata.deletions));
+                            for one_line in &metadata.more_file_stats {
                                 ui.label(one_line);
-                        }
-                    });
+                            }
+                        });
                 }
                 let mut file_names = HashSet::new();
                 for (idx_diff, one_diff) in patch_file.diffs.iter().enumerate() {
                     if file_names.contains(&one_diff.old_path) {
-            errors.push((
+                        errors.push((
                             Color32::RED,
-                format!("Diff {idx_diff}: Duplicate file: {}", one_diff.old_path),
+                            format!("Diff {idx_diff}: Duplicate file: {}", one_diff.old_path),
                         ));
                     } else {
                         file_names.insert(&one_diff.old_path);
                     }
                     let content = if one_diff.content.ends_with('\n') {
-                        one_diff.content.strip_suffix("\n").unwrap_or(&one_diff.content)
+                        one_diff
+                            .content
+                            .strip_suffix("\n")
+                            .unwrap_or(&one_diff.content)
                     } else {
                         &one_diff.content
                     };
@@ -159,7 +162,8 @@ impl LemmingApp {
                     let is_deletion = content.starts_with("deleted");
                     match Patch::from_single(&diff) {
                         Ok(one_diff) => {
-                            if let Some(diff_errors) = check_patch(idx_diff, &one_diff, is_deletion) {
+                            if let Some(diff_errors) = check_patch(idx_diff, &one_diff, is_deletion)
+                            {
                                 errors.extend(diff_errors);
                             }
                             CollapsingHeader::new(format!("Diff {idx_diff}"))
@@ -176,7 +180,8 @@ impl LemmingApp {
                                             ui.label("New range:");
                                             ui.monospace(one_hunk.new_range.to_string());
                                         });
-                                        let rich_text = |t: &str| RichText::new(t).monospace().size(10.0);
+                                        let rich_text =
+                                            |t: &str| RichText::new(t).monospace().size(10.0);
                                         for one_line in &one_hunk.lines {
                                             match one_line {
                                                 Line::Add(l) => {
@@ -194,9 +199,16 @@ impl LemmingApp {
                                 });
                         }
                         Err(e) => {
-                            let ParseError { line, offset, fragment, kind: _ } = e;
-                            let start_line = format!("Failed to parse diff n{idx_diff}\n");
-                            let msg =           format!("ParseError: line {line} offset {offset} fragment {fragment}");
+                            let ParseError {
+                                line,
+                                offset,
+                                fragment,
+                                kind: _,
+                            } = e;
+                            let start_line = format!("Failed to parse diff n{idx_diff}");
+                            let msg = format!(
+                                "ParseError: line {line} offset {offset} fragment {fragment}"
+                            );
                             ui.label(format!("{start_line}\n{msg}"));
                             errors.push((Color32::RED, msg));
                         }
