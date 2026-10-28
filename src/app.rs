@@ -169,7 +169,7 @@ mod tests {
         use crate::patch::parse_file;
         use gitpatch::Patch;
 
-        let (_, patch_file) = parse_file(patch_content)
+        let (_, (patch_file, _err)) = parse_file(patch_content)
             .map_err(|e| std::io::Error::other(format!("Error check_on_patch_file() {e}")))?;
         for (idx_diff, one_diff) in patch_file.diffs.iter().enumerate() {
             let content = if one_diff.content.ends_with('\n') {

@@ -1,11 +1,13 @@
 //! Lemming central panel
 
+use std::collections::HashSet;
+
 use bladvak::{
     ErrorManager,
     eframe::egui::{self, CollapsingHeader, Color32, RichText},
     egui_extras::{self, syntax_highlighting::CodeTheme},
 };
-use gitpatch::{Line, Patch};
+use gitpatch::{Line, ParseError, Patch};
 
 use crate::app::LemmingApp;
 
@@ -135,7 +137,16 @@ impl LemmingApp {
                         }
                     });
                 }
+                let mut file_names = HashSet::new();
                 for (idx_diff, one_diff) in patch_file.diffs.iter().enumerate() {
+                    if file_names.contains(&one_diff.old_path) {
+            errors.push((
+                            Color32::RED,
+                format!("Diff {idx_diff}: Duplicate file: {}", one_diff.old_path),
+                        ));
+                    } else {
+                        file_names.insert(&one_diff.old_path);
+                    }
                     let content = if one_diff.content.ends_with('\n') {
                         one_diff.content.strip_suffix("\n").unwrap_or(&one_diff.content)
                     } else {
@@ -183,8 +194,10 @@ impl LemmingApp {
                                 });
                         }
                         Err(e) => {
-                            let msg =format!("Failed to parse diff n{idx_diff}\nParseError: line {} offset {} fragment {}", e.line, e.offset, e.fragment);
-                            ui.label(&msg);
+                            let ParseError { line, offset, fragment, kind: _ } = e;
+                            let start_line = format!("Failed to parse diff n{idx_diff}\n");
+                            let msg =           format!("ParseError: line {line} offset {offset} fragment {fragment}");
+                            ui.label(format!("{start_line}\n{msg}"));
                             errors.push((Color32::RED, msg));
                         }
                     }
