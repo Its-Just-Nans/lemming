@@ -8,6 +8,7 @@ use nom::{
     character::complete::{char, digit1, line_ending, newline, not_line_ending, space0, space1},
     combinator::{map, opt},
     error::Error,
+    error::ErrorKind,
     multi::{many_till, many0},
     sequence::{preceded, terminated},
 };
@@ -127,23 +128,56 @@ fn parse_file_stats(input: &str) -> IResult<&str, FileStat> {
     ))
 }
 
+/// parse first line
+fn parse_diff_first_line(input: &str) -> (IResult<&str, ()>, Option<&str>, Option<&str>) {
+    let (input, _) = match tag::<_, _, nom::error::Error<_>>("diff --git ").parse(input) {
+        Ok(v) => v,
+        Err(e) => return (Err(e), None, None),
+    };
+
+    let (input, old_path) = match tag("a/").and(take_until(" ")).map(|(_, p)| p).parse(input) {
+        Ok(v) => v,
+        Err(e) => return (Err(e), None, None),
+    };
+
+    let (input, _) = match space1.parse(input) {
+        Ok(v) => v,
+        Err(e) => return (Err(e), Some(old_path), None),
+    };
+
+    let (input, new_path) = match tag("b/").and(take_until("\n")).map(|(_, p)| p).parse(input) {
+        Ok(v) => v,
+        Err(e) => return (Err(e), Some(old_path), None),
+    };
+
+    (Ok((input, ())), Some(old_path), Some(new_path))
+}
+
 /// Parse diff
 fn parse_diff(input: &str) -> IResult<&str, Diff> {
     // diff --git a/foo b/foo
-    let (input, _) = tag("diff --git ").parse(input)?;
-
-    let (input, old_path) = tag("a/")
-        .and(take_until(" "))
-        .map(|(_, p)| p)
-        .parse(input)?;
-
-    let (input, _) = space1.parse(input)?;
-
-    let (input, new_path) = tag("b/")
-        .and(take_until("\n"))
-        .map(|(_, p)| p)
-        .parse(input)?;
-
+    let (input_first_line, old_path, new_path) = parse_diff_first_line(input);
+    let new_path = new_path.unwrap_or_default().to_string();
+    let old_path = old_path.unwrap_or_default().to_string();
+    let input = match input_first_line {
+        Ok((i, ())) => i,
+        Err(err) => {
+            if let Err::Error(e) = &err
+                && (e.code == ErrorKind::TakeUntil || e.code == ErrorKind::Tag)
+            {
+                // EOF error
+                return Ok((
+                    "",
+                    Diff {
+                        old_path,
+                        new_path,
+                        content: String::new(),
+                    },
+                ));
+            }
+            return Err(err);
+        }
+    };
     let (input, _) = newline.parse(input)?;
     // Everything until next diff, patch end, or EOF
     let (input, content) =
@@ -158,8 +192,8 @@ fn parse_diff(input: &str) -> IResult<&str, Diff> {
     Ok((
         input,
         Diff {
-            old_path: old_path.to_string(),
-            new_path: new_path.to_string(),
+            old_path,
+            new_path,
             content: content.to_string(),
         },
     ))
@@ -242,7 +276,7 @@ pub(crate) fn parse_many_diffs(input: &str) -> (Vec<Diff>, Option<Err<Error<&str
 }
 
 /// Parse file
-pub(crate) fn parse_file(input: &str) -> IResult<&str, PatchFile> {
+pub(crate) fn parse_file(input: &str) -> IResult<&str, (PatchFile, Option<String>)> {
     if input.starts_with("From") {
         return parse_patch(input);
     }
@@ -254,15 +288,18 @@ pub(crate) fn parse_file(input: &str) -> IResult<&str, PatchFile> {
     }
     Ok((
         input,
-        PatchFile {
-            metadata: None,
-            diffs,
-        },
+        (
+            PatchFile {
+                metadata: None,
+                diffs,
+            },
+            possible_error.map(|e| e.to_string()),
+        ),
     ))
 }
 
 /// Parse patch
-pub(crate) fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
+pub(crate) fn parse_patch(input: &str) -> IResult<&str, (PatchFile, Option<String>)> {
     let (input, commit_hash) = parse_commit_hash(input)?;
     let (input, (author, email)) = parse_author(input)?;
     let (input, date) = parse_date(input)?;
@@ -293,20 +330,23 @@ pub(crate) fn parse_patch(input: &str) -> IResult<&str, PatchFile> {
     }
     Ok((
         input,
-        PatchFile {
-            metadata: Some(PatchMetadata {
-                commit_hash,
-                author,
-                email,
-                date,
-                subject,
-                file_stats,
-                files_changes,
-                insertions,
-                deletions,
-                more_file_stats: more,
-            }),
-            diffs,
-        },
+        (
+            PatchFile {
+                metadata: Some(PatchMetadata {
+                    commit_hash,
+                    author,
+                    email,
+                    date,
+                    subject,
+                    file_stats,
+                    files_changes,
+                    insertions,
+                    deletions,
+                    more_file_stats: more,
+                }),
+                diffs,
+            },
+            possible_error.map(|e| e.to_string()),
+        ),
     ))
 }

@@ -30,9 +30,13 @@ impl Document {
     /// pare the patch
     pub(crate) fn update_patch(&mut self) -> Result<(), AppError> {
         self.parsed = None;
-        let (_, patch_file) = parse_file(&self.patch_string)
+        let (_, result) = parse_file(&self.patch_string)
             .map_err(|e| format!("Error during patch parsing {e}"))?;
+        let (patch_file, error) = result;
         self.parsed = Some(patch_file);
+        if let Some(err) = error {
+            return Err(err.into());
+        }
         Ok(())
     }
 }
