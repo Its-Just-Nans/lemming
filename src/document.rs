@@ -24,6 +24,16 @@ impl DocumentTrait for Document {
     fn path(&self) -> &Path {
         &self.filename
     }
+    fn set_path(&mut self, path: PathBuf) {
+        self.filename = path;
+    }
+    fn deep_clone(&self) -> Self {
+        Self {
+            patch_string: self.patch_string.clone(),
+            filename: self.filename.clone(),
+            parsed: None,
+        }
+    }
 }
 
 impl Document {
