@@ -1,6 +1,10 @@
 //! panels
 
-use bladvak::{BladvakApp, app::{BladvakPanel, PanelState}, eframe::egui};
+use bladvak::{
+    BladvakApp,
+    app::{BladvakPanel, PanelState},
+    eframe::egui,
+};
 
 use crate::LemmingApp;
 
@@ -8,7 +12,7 @@ use crate::LemmingApp;
 #[derive(Default, Debug)]
 pub(crate) struct Info {
     /// state
-    state: PanelState
+    state: PanelState,
 }
 
 impl BladvakPanel for Info {
@@ -40,10 +44,13 @@ impl BladvakPanel for Info {
     ) {
         if ui.button("Default patch").clicked() {
             let (filename, patch_string) = LemmingApp::load_default();
-            if let Err(err) = app.handle_file(bladvak::File {
-                data: patch_string.into_bytes(),
-                path: filename,
-            }, error_manager) {
+            if let Err(err) = app.handle_file(
+                bladvak::File {
+                    data: patch_string.into_bytes(),
+                    path: filename,
+                },
+                error_manager,
+            ) {
                 error_manager.add_error(err);
             }
         }
