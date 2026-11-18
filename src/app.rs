@@ -49,10 +49,13 @@ impl BladvakApp<'_> for LemmingApp {
     }
 
     fn panel_list(&self) -> Vec<Box<dyn bladvak::app::BladvakPanel<App = Self>>> {
-        vec![Box::new(Info)]
+        vec![Box::new(Info::default())]
     }
 
-    fn is_side_panel(&self) -> bool {
+    fn is_side_panel(
+        &self,
+        _panel_list: &mut [Box<dyn bladvak::app::BladvakPanel<App = Self>>],
+    ) -> bool {
         true
     }
 
@@ -60,7 +63,11 @@ impl BladvakApp<'_> for LemmingApp {
         true
     }
 
-    fn handle_file(&mut self, file: File) -> Result<(), AppError> {
+    fn handle_file(
+        &mut self,
+        file: File,
+        _error_manager: &mut ErrorManager,
+    ) -> Result<(), AppError> {
         let mut document = Document {
             patch_string: String::from_utf8_lossy(&file.data).to_string(),
             filename: file.path,
@@ -86,7 +93,12 @@ impl BladvakApp<'_> for LemmingApp {
         // self.app_menu_file(ui, error_manager);
     }
 
-    fn central_panel(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
+    fn central_panel(
+        &mut self,
+        ui: &mut egui::Ui,
+        error_manager: &mut ErrorManager,
+        _panel_list: &mut [Box<dyn bladvak::app::BladvakPanel<App = Self>>],
+    ) {
         self.app_central_panel(ui, error_manager);
     }
 

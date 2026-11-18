@@ -1,18 +1,27 @@
 //! panels
 
-use bladvak::{BladvakApp, app::BladvakPanel, eframe::egui};
+use bladvak::{BladvakApp, app::{BladvakPanel, PanelState}, eframe::egui};
 
 use crate::LemmingApp;
 
 /// Panel for settings
-#[derive(Debug)]
-pub(crate) struct Info;
+#[derive(Default, Debug)]
+pub(crate) struct Info {
+    /// state
+    state: PanelState
+}
 
 impl BladvakPanel for Info {
     type App = LemmingApp;
 
     fn name(&self) -> &'static str {
         "Infos"
+    }
+    fn state(&self) -> &PanelState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut PanelState {
+        &mut self.state
     }
 
     fn has_settings(&self) -> bool {
@@ -34,7 +43,7 @@ impl BladvakPanel for Info {
             if let Err(err) = app.handle_file(bladvak::File {
                 data: patch_string.into_bytes(),
                 path: filename,
-            }) {
+            }, error_manager) {
                 error_manager.add_error(err);
             }
         }
