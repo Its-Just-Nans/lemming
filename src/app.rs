@@ -86,6 +86,7 @@ impl BladvakApp<'_> for LemmingApp {
     }
 
     fn top_panel(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
+        ui.separator();
         self.documents.show_file_list(ui);
     }
 
