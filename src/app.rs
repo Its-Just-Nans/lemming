@@ -16,6 +16,8 @@ use crate::{document::Document, panels::Info};
 pub struct LemmingApp {
     /// List of documents
     pub(crate) documents: Documents<Document>,
+    /// Show details of patch
+    pub(crate) show_details: bool,
 }
 
 /// Demo patch
@@ -31,7 +33,10 @@ impl Default for LemmingApp {
         };
         let mut documents = Documents::default();
         documents.push(document);
-        Self { documents }
+        Self {
+            documents,
+            show_details: false,
+        }
     }
 }
 

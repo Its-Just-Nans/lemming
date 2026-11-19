@@ -109,7 +109,9 @@ impl LemmingApp {
                             ui.horizontal(|ui| {
                                 ui.label("From");
                                 ui.label(&metadata.commit_hash);
-                                ui.label("Mon Sep 17 00:00:00 2001");
+                                if self.show_details {
+                                    ui.label("Mon Sep 17 00:00:00 2001");
+                                }
                             });
                             ui.horizontal(|ui| {
                                 ui.label("From: ");
@@ -169,8 +171,10 @@ impl LemmingApp {
                             CollapsingHeader::new(format!("Diff {idx_diff}"))
                                 .id_salt(format!("diff_{idx_diff}"))
                                 .show(ui, |ui| {
-                                    ui.label(one_diff.old.path);
-                                    ui.label(one_diff.new.path);
+                                    ui.horizontal(|ui| {
+                                        ui.label(one_diff.old.path);
+                                        ui.label(one_diff.new.path);
+                                    });
                                     for one_hunk in &one_diff.hunks {
                                         ui.separator();
                                         ui.horizontal(|ui| {

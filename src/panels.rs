@@ -54,6 +54,7 @@ impl BladvakPanel for Info {
                 error_manager.add_error(err);
             }
         }
+        ui.checkbox(&mut app.show_details, "Show details");
     }
 
     fn ui(
